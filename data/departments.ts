@@ -20,6 +20,7 @@ export interface Department {
   frontImage: string;
   backImage: string;
   logoPath: string;
+  modelUrl: string;
   stats: {
     registeredCount: number;
     rating: number;
@@ -51,6 +52,7 @@ export const DEPARTMENTS: Department[] = [
     frontImage: '/jerseys/cse-front.png',
     backImage: '/jerseys/cse-back.png',
     logoPath: '/logos/cse.svg',
+    modelUrl: '/models/cse.glb',
     stats: {
       registeredCount: 194,
       rating: 4.9,
@@ -78,6 +80,7 @@ export const DEPARTMENTS: Department[] = [
     frontImage: '/jerseys/csbs-front.png',
     backImage: '/jerseys/csbs-back.png',
     logoPath: '/logos/cse.svg',
+    modelUrl: '/models/csbs.glb',
     stats: {
       registeredCount: 138,
       rating: 4.8,
@@ -105,6 +108,7 @@ export const DEPARTMENTS: Department[] = [
     frontImage: '/jerseys/it-front.png',
     backImage: '/jerseys/it-back.png',
     logoPath: '/logos/it.svg',
+    modelUrl: '/models/it.glb',
     stats: {
       registeredCount: 162,
       rating: 4.9,
@@ -132,6 +136,7 @@ export const DEPARTMENTS: Department[] = [
     frontImage: '/jerseys/aiml-front.png',
     backImage: '/jerseys/aiml-back.png',
     logoPath: '/logos/aiml.svg',
+    modelUrl: '/models/aiml.glb',
     stats: {
       registeredCount: 175,
       rating: 4.9,
@@ -159,6 +164,7 @@ export const DEPARTMENTS: Department[] = [
     frontImage: '/jerseys/extc-front.png',
     backImage: '/jerseys/extc-back.png',
     logoPath: '/logos/ece.svg',
+    modelUrl: '/models/extc.glb',
     stats: {
       registeredCount: 122,
       rating: 4.8,
