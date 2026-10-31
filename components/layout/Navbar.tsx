@@ -154,7 +154,7 @@ export default function Navbar() {
                 onClick={closeMenu}
                 className="btn-hard-pink w-full py-4 text-center font-display text-xl uppercase tracking-wider block"
               >
-                BROWSE 8+ DEPARTMENTS
+                BROWSE 5 DEPARTMENTS
               </Link>
               <p className="text-center text-xs text-zinc-500 font-bold uppercase tracking-wider">
                 {SITE_CONFIG.demoNotice}
@@ -166,3 +166,4 @@ export default function Navbar() {
     </header>
   );
 }
+

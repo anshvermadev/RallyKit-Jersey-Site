@@ -18,7 +18,6 @@ const SIZE_TABLE = [
   { size: 'L', chestInches: '40 - 42', lengthInches: '29', chestCm: '101 - 106', lengthCm: '74' },
   { size: 'XL', chestInches: '42 - 44', lengthInches: '30', chestCm: '106 - 112', lengthCm: '76' },
   { size: '2XL', chestInches: '44 - 46', lengthInches: '31', chestCm: '112 - 117', lengthCm: '79' },
-  { size: '3XL', chestInches: '46 - 48', lengthInches: '32', chestCm: '117 - 122', lengthCm: '81' },
 ];
 
 export default function SizeChartModal({
@@ -166,3 +165,4 @@ export default function SizeChartModal({
     </AnimatePresence>
   );
 }
+

@@ -291,3 +291,4 @@ class LocalFileOrderRepository implements OrderRepository {
 
 // Export singleton repository
 export const orderRepository: OrderRepository = new LocalFileOrderRepository();
+

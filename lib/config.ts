@@ -17,3 +17,4 @@ export const SITE_CONFIG = {
   collectionVenue: 'Student Activity Center, Counter 4',
   demoNotice: 'Demo build – no real money is charged. Authentic campus registration simulation.',
 };
+

@@ -183,7 +183,7 @@ export default function CustomizerPanel({ department }: CustomizerPanelProps) {
               <span>SIZE CHART</span>
             </button>
           </div>
-          <div className="grid grid-cols-7 gap-1.5">
+          <div className="grid grid-cols-6 gap-1.5">
             {department.availableSizes.map((sz) => (
               <button
                 key={sz}
@@ -302,3 +302,4 @@ export default function CustomizerPanel({ department }: CustomizerPanelProps) {
     </div>
   );
 }
+

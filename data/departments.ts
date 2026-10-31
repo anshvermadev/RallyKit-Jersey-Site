@@ -1,201 +1,166 @@
 export interface Department {
-  slug: string;
-  name: string;
+  slug: 'cse' | 'csbs' | 'it' | 'aiml' | 'extc';
   shortName: string;
+  fullName: string;
+  name: string; // compatibility alias
   tagline: string;
   description: string;
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
+  textColor: string; // high contrast text for name/number
+  collarColor: string;
+  sleeveColor: string;
   sleeveColors: string[];
   collarColors: string[];
   basePrice: number;
   badgeText: string;
   batch: string;
-  availableSizes: ('XS' | 'S' | 'M' | 'L' | 'XL' | '2XL' | '3XL')[];
+  availableSizes: ('XS' | 'S' | 'M' | 'L' | 'XL' | '2XL')[];
+  frontImage: string;
+  backImage: string;
   logoPath: string;
-  texturePath?: string;
-  pattern: 'cyber-circuit' | 'speed-slash' | 'hex-matrix' | 'quantum-grid' | 'glitch-stripes' | 'heavy-mesh';
   stats: {
     registeredCount: number;
     rating: number;
   };
 }
 
+export const BASE_PRICE = 599;
+
 export const DEPARTMENTS: Department[] = [
   {
     slug: 'cse',
-    name: 'Computer Science & Engineering',
     shortName: 'CSE',
-    tagline: 'BINARY BLOOD. CODE WARRIORS.',
-    description: 'Forged with high-contrast cyber pink and electric cyan. Designed for algorithmic dominance and esports supremacy.',
-    primaryColor: '#FF2E93', // Hot Pink
-    secondaryColor: '#00F0FF', // Cyan
-    accentColor: '#121226',
-    sleeveColors: ['#00F0FF', '#FF2E93', '#121226', '#FFFFFF'],
-    collarColors: ['#FFE600', '#FF2E93', '#000000'],
-    basePrice: 599,
-    badgeText: 'HOT PICK',
+    fullName: 'Computer Science and Engineering',
+    name: 'Computer Science and Engineering',
+    tagline: 'MIDNIGHT MATRIX. DOMINATE THE CODE ARENA.',
+    description: 'Deep Navy Blue base with brush camouflage texture, crisp white shoulder stripes, and tournament crest.',
+    primaryColor: '#141E34', // Navy Blue sampled from cse-front.png
+    secondaryColor: '#FFFFFF', // White stripes & accents
+    accentColor: '#FFFFFF',
+    textColor: '#FFFFFF',
+    collarColor: '#141E34',
+    sleeveColor: '#141E34',
+    sleeveColors: ['#141E34', '#FFFFFF'],
+    collarColors: ['#FFFFFF', '#141E34'],
+    basePrice: BASE_PRICE,
+    badgeText: 'NAVY BLUE',
     batch: 'BATCH 2026',
-    availableSizes: ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'],
+    availableSizes: ['XS', 'S', 'M', 'L', 'XL', '2XL'],
+    frontImage: '/jerseys/cse-front.png',
+    backImage: '/jerseys/cse-back.png',
     logoPath: '/logos/cse.svg',
-    pattern: 'cyber-circuit',
     stats: {
-      registeredCount: 184,
+      registeredCount: 194,
       rating: 4.9,
     },
   },
   {
-    slug: 'aiml',
-    name: 'Artificial Intelligence & Data Science',
-    shortName: 'AI & DS',
-    tagline: 'NEURAL SUPREMACY. PREDICT THE WIN.',
-    description: 'Electric yellow matrix slashes across deep cosmic indigo. Synthetic intelligence tailored for the campus apex.',
-    primaryColor: '#8A2BE2', // Neon Violet
-    secondaryColor: '#FFE600', // Electric Yellow
-    accentColor: '#0A0A16',
-    sleeveColors: ['#FFE600', '#8A2BE2', '#FFFFFF', '#14142B'],
-    collarColors: ['#FFE600', '#8A2BE2', '#000000'],
-    basePrice: 599,
-    badgeText: 'TRENDING',
+    slug: 'csbs',
+    shortName: 'CSBS',
+    fullName: 'Computer Science and Business Systems',
+    name: 'Computer Science and Business Systems',
+    tagline: 'STEALTH LOGIC. BUSINESS-DRIVEN EXECUTION.',
+    description: 'Stealth Carbon Black body featuring dynamic charcoal camouflage textures and bold white trim contouring.',
+    primaryColor: '#18181A', // Carbon Black sampled from csbs-front.png
+    secondaryColor: '#FFFFFF', // White stripes & accents
+    accentColor: '#FFFFFF',
+    textColor: '#FFFFFF',
+    collarColor: '#18181A',
+    sleeveColor: '#18181A',
+    sleeveColors: ['#18181A', '#FFFFFF'],
+    collarColors: ['#FFFFFF', '#18181A'],
+    basePrice: BASE_PRICE,
+    badgeText: 'BLACK',
     batch: 'BATCH 2026',
-    availableSizes: ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'],
-    logoPath: '/logos/aiml.svg',
-    pattern: 'hex-matrix',
+    availableSizes: ['XS', 'S', 'M', 'L', 'XL', '2XL'],
+    frontImage: '/jerseys/csbs-front.png',
+    backImage: '/jerseys/csbs-back.png',
+    logoPath: '/logos/cse.svg',
     stats: {
-      registeredCount: 142,
+      registeredCount: 138,
       rating: 4.8,
     },
   },
   {
     slug: 'it',
-    name: 'Information Technology',
     shortName: 'IT',
-    tagline: 'ZERO DOWNTIME. PURE BANDWIDTH.',
-    description: 'High-octane neon cyan with hot pink accents and matrix energy. Engineered for network dominators.',
-    primaryColor: '#00D2FF', // Vivid Cyan
-    secondaryColor: '#FF2E93', // Pink
-    accentColor: '#0B0D1B',
-    sleeveColors: ['#FF2E93', '#00D2FF', '#FFFFFF', '#0B0D1B'],
-    collarColors: ['#00D2FF', '#FF2E93', '#000000'],
-    basePrice: 599,
-    badgeText: 'CAMPUS HIT',
+    fullName: 'Information Technology',
+    name: 'Information Technology',
+    tagline: 'CRIMSON VOLT. MAXIMUM BANDWIDTH & GOLD GLORY.',
+    description: 'Rich Deep Crimson Red torso with darker brush camo textures, complemented by metallic gold shoulder stripes.',
+    primaryColor: '#630E1A', // Deep Maroon Red sampled from it-front.png
+    secondaryColor: '#E5C158', // Metallic Gold sampled from it-front.png
+    accentColor: '#FFD700',
+    textColor: '#E5C158',
+    collarColor: '#630E1A',
+    sleeveColor: '#630E1A',
+    sleeveColors: ['#630E1A', '#E5C158'],
+    collarColors: ['#E5C158', '#630E1A'],
+    basePrice: BASE_PRICE,
+    badgeText: 'RED',
     batch: 'BATCH 2026',
-    availableSizes: ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'],
+    availableSizes: ['XS', 'S', 'M', 'L', 'XL', '2XL'],
+    frontImage: '/jerseys/it-front.png',
+    backImage: '/jerseys/it-back.png',
     logoPath: '/logos/it.svg',
-    pattern: 'quantum-grid',
     stats: {
-      registeredCount: 119,
-      rating: 4.7,
-    },
-  },
-  {
-    slug: 'ece',
-    name: 'Electronics & Communication',
-    shortName: 'ECE',
-    tagline: 'HIGH FREQUENCY. MAXIMUM VOLTAGE.',
-    description: 'Blazing crimson volt combined with acid yellow-green waveforms. Built to transmit unstoppable energy.',
-    primaryColor: '#FF1744', // Crimson Volt
-    secondaryColor: '#CCFF00', // Acid Lime
-    accentColor: '#1A0B10',
-    sleeveColors: ['#CCFF00', '#FF1744', '#FFFFFF', '#1A0B10'],
-    collarColors: ['#CCFF00', '#FF1744', '#000000'],
-    basePrice: 599,
-    badgeText: 'HIGH VOLT',
-    batch: 'BATCH 2026',
-    availableSizes: ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'],
-    logoPath: '/logos/ece.svg',
-    pattern: 'speed-slash',
-    stats: {
-      registeredCount: 96,
-      rating: 4.8,
-    },
-  },
-  {
-    slug: 'mech',
-    name: 'Mechanical Engineering',
-    shortName: 'MECH',
-    tagline: 'HEAVY TORQUE. UNBREAKABLE WILL.',
-    description: 'Industrial cyber orange fused with volcanic yellow and titanium alloy accents. Pure raw horsepower.',
-    primaryColor: '#FF6D00', // Vivid Orange
-    secondaryColor: '#FFE600', // Electric Yellow
-    accentColor: '#18120A',
-    sleeveColors: ['#FFE600', '#FF6D00', '#2B2B36', '#FFFFFF'],
-    collarColors: ['#FFE600', '#FF6D00', '#000000'],
-    basePrice: 599,
-    badgeText: 'POWERHOUSE',
-    batch: 'BATCH 2026',
-    availableSizes: ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'],
-    logoPath: '/logos/mech.svg',
-    pattern: 'heavy-mesh',
-    stats: {
-      registeredCount: 135,
+      registeredCount: 162,
       rating: 4.9,
     },
   },
   {
-    slug: 'civil',
-    name: 'Civil Engineering',
-    shortName: 'CIVIL',
-    tagline: 'SOLID FOUNDATION. ARCHITECTS OF REALITY.',
-    description: 'Hazard yellow warning graphics coupled with asphalt carbon blacks and structural grid lines.',
-    primaryColor: '#FFE600', // High-vis Yellow
-    secondaryColor: '#1E1E28', // Dark Carbon
-    accentColor: '#FF2E93',
-    sleeveColors: ['#1E1E28', '#FFE600', '#FFFFFF', '#FF2E93'],
-    collarColors: ['#FFE600', '#1E1E28', '#FF2E93'],
-    basePrice: 599,
-    badgeText: 'TITAN',
+    slug: 'aiml',
+    shortName: 'AIML',
+    fullName: 'Artificial Intelligence and Machine Learning',
+    name: 'Artificial Intelligence and Machine Learning',
+    tagline: 'BLIZZARD APEX. PREDICT AND CONQUER.',
+    description: 'Pristine Tech White athletic body with light gray camouflage texturing, framed by contrasting deep navy stripes.',
+    primaryColor: '#F4F5F9', // White sampled from aiml-front.png
+    secondaryColor: '#0F1D38', // Deep Navy Blue sampled from aiml-front.png
+    accentColor: '#0F1D38',
+    textColor: '#0F1D38', // Dark text for contrast on white jersey
+    collarColor: '#0F1D38',
+    sleeveColor: '#F4F5F9',
+    sleeveColors: ['#F4F5F9', '#0F1D38'],
+    collarColors: ['#0F1D38', '#F4F5F9'],
+    basePrice: BASE_PRICE,
+    badgeText: 'WHITE',
     batch: 'BATCH 2026',
-    availableSizes: ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'],
-    logoPath: '/logos/civil.svg',
-    pattern: 'glitch-stripes',
+    availableSizes: ['XS', 'S', 'M', 'L', 'XL', '2XL'],
+    frontImage: '/jerseys/aiml-front.png',
+    backImage: '/jerseys/aiml-back.png',
+    logoPath: '/logos/aiml.svg',
     stats: {
-      registeredCount: 88,
-      rating: 4.6,
+      registeredCount: 175,
+      rating: 4.9,
     },
   },
   {
-    slug: 'eee',
-    name: 'Electrical & Electronics',
-    shortName: 'EEE',
-    tagline: 'TESLA COILS & LIGHTNING STRIKES.',
-    description: 'High voltage electric shock blue paired with flash white and neon yellow accents. Boundless currents.',
-    primaryColor: '#0066FF', // Tesla Blue
-    secondaryColor: '#FFE600', // Electric Yellow
-    accentColor: '#091325',
-    sleeveColors: ['#FFE600', '#0066FF', '#FFFFFF', '#091325'],
-    collarColors: ['#FFE600', '#0066FF', '#000000'],
-    basePrice: 599,
-    badgeText: 'SURGE',
+    slug: 'extc',
+    shortName: 'EXTC',
+    fullName: 'Electronics and Telecommunication Engineering',
+    name: 'Electronics and Telecommunication Engineering',
+    tagline: 'TACTICAL RADAR. HIGH FREQUENCY SUPREMACY.',
+    description: 'Tactical Olive Green body with dark green brush camo texture, white shoulder stripes, and white side contour panels.',
+    primaryColor: '#383D2A', // Tactical Olive Green sampled from extc-front.png
+    secondaryColor: '#FFFFFF', // White stripes & side panels
+    accentColor: '#FFFFFF',
+    textColor: '#FFFFFF',
+    collarColor: '#383D2A',
+    sleeveColor: '#383D2A',
+    sleeveColors: ['#383D2A', '#FFFFFF'],
+    collarColors: ['#FFFFFF', '#383D2A'],
+    basePrice: BASE_PRICE,
+    badgeText: 'OLIVE GREEN',
     batch: 'BATCH 2026',
-    availableSizes: ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'],
-    logoPath: '/logos/eee.svg',
-    pattern: 'speed-slash',
+    availableSizes: ['XS', 'S', 'M', 'L', 'XL', '2XL'],
+    frontImage: '/jerseys/extc-front.png',
+    backImage: '/jerseys/extc-back.png',
+    logoPath: '/logos/ece.svg',
     stats: {
-      registeredCount: 78,
-      rating: 4.7,
-    },
-  },
-  {
-    slug: 'chem',
-    name: 'Chemical Engineering',
-    shortName: 'CHEM',
-    tagline: 'CATALYST FOR CHAOS. MOLECULAR FUSION.',
-    description: 'Toxic acid green with explosive hot pink reaction zones. Bold, volatile, and impossible to ignore.',
-    primaryColor: '#00FF88', // Toxic Acid Green
-    secondaryColor: '#FF2E93', // Hot Pink
-    accentColor: '#0B1E14',
-    sleeveColors: ['#FF2E93', '#00FF88', '#FFFFFF', '#0B1E14'],
-    collarColors: ['#FF2E93', '#00FF88', '#000000'],
-    basePrice: 599,
-    badgeText: 'REACTION',
-    batch: 'BATCH 2026',
-    availableSizes: ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'],
-    logoPath: '/logos/chem.svg',
-    pattern: 'hex-matrix',
-    stats: {
-      registeredCount: 65,
+      registeredCount: 122,
       rating: 4.8,
     },
   },

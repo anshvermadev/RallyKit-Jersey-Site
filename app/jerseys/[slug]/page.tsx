@@ -2,24 +2,25 @@
 
 import React, { useEffect } from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { ChevronRight, Shield, Award, Sparkles, Flame, CheckCircle2 } from 'lucide-react';
 import { getDepartmentBySlug, DEPARTMENTS } from '@/data/departments';
 import { useCustomizerStore } from '@/lib/store/useCustomizerStore';
 import CustomizerPanel from '@/components/jersey/CustomizerPanel';
+import { useRegistrationStore } from '@/lib/store/useRegistrationStore';
 
 // Dynamic import with SSR disabled for optimal client-side 3D initialization
 const JerseyCanvas = dynamic(() => import('@/components/jersey/JerseyCanvas'), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-[460px] md:h-[600px] bg-[#10101C] border-2 border-[#232338] flex flex-col items-center justify-center p-8 text-center animate-pulse">
+    <div className="w-full h-[460px] md:h-[620px] bg-[#10101C] border-2 border-[#232338] flex flex-col items-center justify-center p-8 text-center animate-pulse">
       <Flame className="w-12 h-12 text-pink-hot animate-bounce mb-3" />
       <span className="font-display text-2xl text-yellow-electric italic tracking-wider">
-        PREPARING 3D CANVAS...
+        TEXTURING 3D JERSEY...
       </span>
       <span className="text-xs font-mono text-zinc-500 mt-2">
-        Allocating WebGL buffers & lighting rigs
+        Building custom athletic geometry & canvas shaders
       </span>
     </div>
   ),
@@ -30,6 +31,7 @@ export default function JerseyDetailPage({
 }: {
   params: { slug: string };
 }) {
+  const router = useRouter();
   const dept = getDepartmentBySlug(params.slug);
 
   const {
@@ -41,15 +43,26 @@ export default function JerseyDetailPage({
     setSnapshotUrl,
   } = useCustomizerStore();
 
+  const setJerseyData = useRegistrationStore((state) => state.setJerseyData);
+
   useEffect(() => {
     if (dept) {
       setDepartment(dept);
+      setJerseyData({
+        departmentSlug: dept.slug,
+        departmentName: dept.name,
+      });
     }
-  }, [dept, setDepartment]);
+  }, [dept, setDepartment, setJerseyData]);
 
   if (!dept) {
     return notFound();
   }
+
+  const handleSnapshotCapture = (dataUrl: string) => {
+    setSnapshotUrl(dataUrl);
+    setJerseyData({ thumbnailSnapshot: dataUrl });
+  };
 
   return (
     <div className="min-h-screen bg-[#0B0B12] py-8 sm:py-12">
@@ -64,7 +77,40 @@ export default function JerseyDetailPage({
             JERSEYS
           </Link>
           <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
-          <span className="text-yellow-electric font-bold">{dept.shortName}</span>
+          <span className="text-yellow-electric font-bold">
+            {dept.shortName} ({dept.badgeText})
+          </span>
+        </div>
+
+        {/* 5-Department Switcher Bar */}
+        <div className="bg-[#13131F] border-2 border-[#232338] p-2.5 mb-8 flex items-center justify-between gap-2 overflow-x-auto shadow-xl">
+          <span className="text-[11px] font-mono text-zinc-400 font-bold uppercase shrink-0 px-3 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-pink-hot" /> 5 BRANCH COLORWAYS:
+          </span>
+          <div className="flex items-center gap-2">
+            {DEPARTMENTS.map((d) => {
+              const isActive = d.slug === dept.slug;
+              return (
+                <button
+                  key={d.slug}
+                  onClick={() => router.push(`/jerseys/${d.slug}`)}
+                  className={`px-3.5 py-1.5 text-xs font-display italic uppercase tracking-wider transition-all shrink-0 flex items-center gap-2 ${
+                    isActive
+                      ? 'bg-yellow-electric text-black font-black shadow-hard-pink scale-105'
+                      : 'bg-[#1A1A2E] text-zinc-300 hover:bg-zinc-800 border border-[#232338]'
+                  }`}
+                >
+                  <div
+                    className="w-2.5 h-2.5 rounded-full border border-black/40"
+                    style={{ backgroundColor: d.primaryColor }}
+                  />
+                  <span>
+                    {d.shortName} ({d.badgeText})
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Main 3D Canvas + Customizer Grid */}
@@ -77,31 +123,9 @@ export default function JerseyDetailPage({
               jerseyNumber={jerseyNumber}
               sleeveColor={sleeveColor}
               collarColor={collarColor}
-              onSnapshot={(url) => setSnapshotUrl(url)}
-              className="h-[460px] sm:h-[560px] lg:h-[620px]"
+              onSnapshot={handleSnapshotCapture}
+              className="h-[460px] sm:h-[580px] lg:h-[640px]"
             />
-
-            {/* Quick Department Switcher Strip */}
-            <div className="bg-[#13131F] border border-[#232338] p-3 flex items-center justify-between gap-2 overflow-x-auto">
-              <span className="text-[11px] font-mono text-zinc-400 font-bold uppercase shrink-0 px-2 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-pink-hot" /> SWITCH SQUAD:
-              </span>
-              <div className="flex items-center gap-2">
-                {DEPARTMENTS.map((d) => (
-                  <Link
-                    key={d.slug}
-                    href={`/jerseys/${d.slug}`}
-                    className={`px-2.5 py-1 text-xs font-display italic uppercase tracking-wider transition-colors shrink-0 ${
-                      d.slug === dept.slug
-                        ? 'bg-yellow-electric text-black font-black'
-                        : 'bg-[#1A1A2E] text-zinc-300 hover:bg-zinc-800'
-                    }`}
-                  >
-                    {d.shortName}
-                  </Link>
-                ))}
-              </div>
-            </div>
           </div>
 
           {/* Right: Live Customisation Panel */}
@@ -110,7 +134,7 @@ export default function JerseyDetailPage({
           </div>
         </div>
 
-        {/* Technical Product Specifications Section */}
+        {/* Technical Product Specifications */}
         <div className="mt-16 pt-12 border-t-2 border-[#232338]">
           <h3 className="font-display text-3xl font-black italic uppercase tracking-wider text-white mb-6">
             AUTHENTIC PRODUCT SPECIFICATIONS
@@ -125,7 +149,7 @@ export default function JerseyDetailPage({
                 220 GSM SUBLIMATION
               </h4>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                High-definition digital sublimation guarantees zero fading, cracking, or peeling after multiple washes.
+                Precision digital heat sublimation locks in branch colors with zero fading, cracking, or peeling.
               </p>
             </div>
 
@@ -137,7 +161,7 @@ export default function JerseyDetailPage({
                 SWEAT-WICKING CYBER-DRY
               </h4>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                Micro-perforated polyester yarn pulls moisture rapidly to keep you cool under stage lights and campus sun.
+                Micro-perforated polyester yarn pulls moisture rapidly to keep you cool under stadium lights and campus sun.
               </p>
             </div>
 
@@ -149,7 +173,7 @@ export default function JerseyDetailPage({
                 REINFORCED DOUBLE SEAMS
               </h4>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                Engineered collar binding and double-stitched sleeve hems built to endure active campus seasons.
+                Ribbed collar binding and double-stitched sleeve hems engineered to endure intense gaming tournament seasons.
               </p>
             </div>
 
@@ -161,7 +185,7 @@ export default function JerseyDetailPage({
                 CAMPUS PICKUP QR PASS
               </h4>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                Instant digital authentication pass sent immediately upon registration for frictionless collection at SAC.
+                Instant digital authentication pass issued with each order for swift counter pickup at the Student Activity Center.
               </p>
             </div>
           </div>

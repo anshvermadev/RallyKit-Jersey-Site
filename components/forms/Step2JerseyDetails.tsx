@@ -132,10 +132,10 @@ export default function Step2JerseyDetails() {
         {/* Size Selector */}
         <div>
           <label className="block text-xs font-mono font-bold uppercase text-zinc-300 mb-2">
-            SIZE (XS - 3XL) *
+            SIZE (XS - 2XL) *
           </label>
-          <div className="grid grid-cols-7 gap-1.5">
-            {(['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'] as const).map((sz) => (
+          <div className="grid grid-cols-6 gap-1.5">
+            {(['XS', 'S', 'M', 'L', 'XL', '2XL'] as const).map((sz) => (
               <button
                 key={sz}
                 type="button"
@@ -219,3 +219,4 @@ export default function Step2JerseyDetails() {
     </form>
   );
 }
+

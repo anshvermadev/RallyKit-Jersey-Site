@@ -3,10 +3,10 @@
 import React, { Suspense, useState, useRef, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ContactShadows, Environment, useProgress, Html } from '@react-three/drei';
-import { RotateCcw, Camera, Eye, Sparkles } from 'lucide-react';
+import { RotateCcw, Camera, Eye, Sparkles, RefreshCw } from 'lucide-react';
 import { Department } from '@/data/departments';
 import { CameraView } from '@/lib/store/useCustomizerStore';
-import SafeJerseyRenderer from './GLBJerseyModel';
+import JerseyModel from './JerseyModel';
 import CameraController from './CameraController';
 
 interface JerseyCanvasProps {
@@ -23,13 +23,13 @@ function Loader() {
   const { progress } = useProgress();
   return (
     <Html center>
-      <div className="flex flex-col items-center justify-center bg-[#0B0B12]/90 border border-pink-hot p-4 rounded skew-tag text-center min-w-[180px] shadow-hard-pink">
+      <div className="flex flex-col items-center justify-center bg-[#0B0B12]/95 border-2 border-pink-hot p-4 rounded skew-tag text-center min-w-[200px] shadow-hard-pink">
         <div className="text-yellow-electric font-display text-xl skew-tag-inner tracking-wider italic animate-pulse">
-          LOADING 3D KIT...
+          TEXTURING 3D JERSEY...
         </div>
         <div className="w-full bg-[#1A1A2E] h-2 mt-2 rounded-full overflow-hidden skew-tag-inner border border-zinc-700">
           <div
-            className="h-full bg-pink-hot transition-all duration-300"
+            className="h-full bg-pink-hot transition-all duration-200"
             style={{ width: `${Math.round(progress)}%` }}
           />
         </div>
@@ -41,52 +41,74 @@ function Loader() {
   );
 }
 
-// 2D SVG Fallback if WebGL is unsupported
-function WebGLFallback({
+// "Flip Card" Style 3D CSS Transform Fallback (if WebGL is unavailable)
+function FlipCardFallback({
   department,
   customName,
   jerseyNumber,
-  sleeveColor,
 }: {
   department: Department;
   customName: string;
   jerseyNumber: number;
-  sleeveColor?: string;
 }) {
-  return (
-    <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-[#13131F] border border-pink-hot/30">
-      <div className="relative w-64 h-72 flex items-center justify-center">
-        <svg viewBox="0 0 200 240" className="w-full h-full drop-shadow-[0_10px_20px_rgba(255,46,147,0.3)]">
-          {/* Sleeves */}
-          <path d="M 30,50 L 0,80 L 25,120 L 50,85 Z" fill={sleeveColor || department.secondaryColor} />
-          <path d="M 170,50 L 200,80 L 175,120 L 150,85 Z" fill={sleeveColor || department.secondaryColor} />
-          {/* Main Body */}
-          <path
-            d="M 45,50 L 155,50 L 160,210 L 40,210 Z"
-            fill={department.primaryColor}
-            stroke="#232338"
-            strokeWidth="3"
-          />
-          {/* Collar */}
-          <path d="M 70,50 Q 100,85 130,50 Z" fill="#FFE600" />
-        </svg>
+  const [isFlipped, setIsFlipped] = useState(false);
 
-        {/* Live Text Overlay on SVG */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center pt-8">
-          <span className="text-white font-black text-xs tracking-widest uppercase bg-black/40 px-2 py-0.5 rounded">
-            {customName || 'STUDENT'}
-          </span>
-          <span className="text-yellow-electric font-black text-4xl mt-2 drop-shadow-md">
-            {String(jerseyNumber).padStart(2, '0')}
-          </span>
-          <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest mt-1">
-            {department.shortName}
-          </span>
+  return (
+    <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-[#13131F] border border-pink-hot/30 select-none">
+      <div
+        onClick={() => setIsFlipped(!isFlipped)}
+        className="relative w-64 h-80 cursor-pointer [perspective:1000px] group"
+      >
+        <div
+          className={`relative w-full h-full duration-500 [transform-style:preserve-3d] transition-transform ${
+            isFlipped ? '[transform:rotateY(180deg)]' : ''
+          }`}
+        >
+          {/* Front Face */}
+          <div className="absolute inset-0 [backface-visibility:hidden] bg-[#0B0B12] border-2 border-pink-hot p-3 flex flex-col items-center justify-center shadow-hard-pink">
+            <img
+              src={department.frontImage}
+              alt={`${department.name} Front`}
+              className="w-full h-full object-contain"
+            />
+            <span className="absolute bottom-2 bg-black/80 text-yellow-electric text-[10px] font-mono px-2 py-0.5">
+              CLICK TO FLIP TO BACK ⟳
+            </span>
+          </div>
+
+          {/* Back Face */}
+          <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] bg-[#0B0B12] border-2 border-yellow-electric p-3 flex flex-col items-center justify-center shadow-hard-yellow">
+            <img
+              src={department.backImage}
+              alt={`${department.name} Back`}
+              className="w-full h-full object-contain"
+            />
+            {/* Live custom name & number overlay on back card */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center pt-8">
+              <span
+                className="font-display text-sm tracking-wider uppercase px-2 py-0.5 font-bold"
+                style={{ color: department.textColor }}
+              >
+                {customName || 'STUDENT'}
+              </span>
+              <span
+                className="font-display text-5xl font-black mt-2 drop-shadow-md"
+                style={{ color: department.slug === 'it' ? '#E5C158' : department.textColor }}
+              >
+                {String(jerseyNumber).padStart(2, '0')}
+              </span>
+            </div>
+            <span className="absolute bottom-2 bg-black/80 text-pink-hot text-[10px] font-mono px-2 py-0.5">
+              CLICK TO FLIP TO FRONT ⟳
+            </span>
+          </div>
         </div>
       </div>
-      <p className="text-xs text-zinc-400 mt-4">
-        (WebGL acceleration disabled on this browser; 2D reactive preview active)
-      </p>
+
+      <div className="flex items-center gap-2 mt-4 text-xs font-mono text-zinc-400">
+        <RefreshCw className="w-3.5 h-3.5 text-yellow-electric animate-spin" />
+        <span>3D CSS Flip Card Active (WebGL Fallback Mode)</span>
+      </div>
     </div>
   );
 }
@@ -131,17 +153,18 @@ export default function JerseyCanvas({
 
   if (!webGLSupported) {
     return (
-      <WebGLFallback
+      <FlipCardFallback
         department={department}
         customName={customName}
         jerseyNumber={jerseyNumber}
-        sleeveColor={sleeveColor}
       />
     );
   }
 
   return (
-    <div className={`relative w-full ${className} bg-gradient-to-b from-[#10101C] via-[#0D0D17] to-[#08080E] border-2 border-[#232338] overflow-hidden group select-none shadow-[inset_0_0_80px_rgba(0,0,0,0.8)]`}>
+    <div
+      className={`relative w-full ${className} bg-gradient-to-b from-[#10101C] via-[#0D0D17] to-[#08080E] border-2 border-[#232338] overflow-hidden group select-none shadow-[inset_0_0_80px_rgba(0,0,0,0.85)]`}
+    >
       {/* Background Graphic Grid */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(255,46,147,0.12),transparent_70%)] pointer-events-none" />
 
@@ -152,16 +175,16 @@ export default function JerseyCanvas({
         camera={{ position: [1.8, 1.2, 2.6], fov: 45 }}
         className="w-full h-full cursor-grab active:cursor-grabbing"
       >
-        <ambientLight intensity={0.7} />
+        <ambientLight intensity={0.75} />
         {/* Main Key Light */}
         <directionalLight position={[4, 6, 4]} intensity={1.5} castShadow />
-        {/* Hot Pink Rim Light (Esports style) */}
+        {/* Signature Hot Pink Rim Light */}
         <directionalLight position={[-5, 3, -4]} color="#FF2E93" intensity={2.6} />
-        {/* Electric Yellow Fill */}
+        {/* Electric Yellow Fill Light */}
         <directionalLight position={[5, -2, -3]} color="#FFE600" intensity={1.2} />
 
         <Suspense fallback={<Loader />}>
-          <SafeJerseyRenderer
+          <JerseyModel
             department={department}
             customName={customName}
             jerseyNumber={jerseyNumber}
@@ -186,12 +209,12 @@ export default function JerseyCanvas({
         />
       </Canvas>
 
-      {/* Top Overlay Badge */}
+      {/* Top Left Overlay Badge */}
       <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
         <div className="bg-[#13131F]/90 backdrop-blur border border-pink-hot/40 px-3 py-1 flex items-center gap-1.5 skew-tag">
           <Sparkles className="w-3.5 h-3.5 text-pink-hot skew-tag-inner" />
           <span className="font-display text-xs text-white skew-tag-inner tracking-widest">
-            3D REAL-TIME KIT
+            3D PROCEDURAL KIT
           </span>
         </div>
       </div>

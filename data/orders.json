@@ -1,6 +1,49 @@
 [
   {
     "student": {
+      "fullName": "dsa",
+      "enrollmentNumber": "1234567890",
+      "collegeEmail": "rewavrema@gmail.com",
+      "phone": "9876543210",
+      "department": "Information Technology",
+      "year": "1st Year",
+      "division": "A"
+    },
+    "jersey": {
+      "departmentSlug": "it",
+      "departmentName": "Information Technology",
+      "customName": "STUDENT",
+      "jerseyNumber": 15,
+      "size": "L",
+      "sleeveColor": "#FF2E93",
+      "collarColor": "#00D2FF",
+      "quantity": 1,
+      "notes": "",
+      "thumbnailSnapshot": ""
+    },
+    "pricing": {
+      "basePrice": 599,
+      "customizationFee": 0,
+      "quantity": 1,
+      "discount": 0,
+      "total": 599
+    },
+    "payment": {
+      "method": "upi",
+      "status": "paid",
+      "transactionId": "UPI-DEMO-776729",
+      "paidAt": "2026-10-31T16:39:28.839Z",
+      "demoDetails": {
+        "gatewayRef": "DEMO_GW_776729"
+      }
+    },
+    "status": "Paid",
+    "id": "JRS-2026-0005",
+    "createdAt": "2026-10-31T16:39:28.839Z",
+    "updatedAt": "2026-10-31T16:39:28.839Z"
+  },
+  {
+    "student": {
       "fullName": "Dev Tester",
       "enrollmentNumber": "2026TEST001",
       "collegeEmail": "tester@campus.edu",

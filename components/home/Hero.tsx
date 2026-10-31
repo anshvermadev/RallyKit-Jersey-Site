@@ -103,14 +103,20 @@ export default function Hero() {
 
             {/* Live department chips */}
             <div className="pt-4 flex items-center gap-2 flex-wrap text-xs font-mono text-zinc-400">
-              <span className="text-zinc-500 font-bold uppercase">POPULAR:</span>
-              {DEPARTMENTS.slice(0, 5).map((d) => (
+              <span className="text-zinc-500 font-bold uppercase">5 BRANCHES:</span>
+              {DEPARTMENTS.map((d) => (
                 <Link
                   key={d.slug}
                   href={`/jerseys/${d.slug}`}
-                  className="bg-[#181829] hover:bg-pink-hot hover:text-black border border-zinc-800 px-2 py-1 transition-colors uppercase font-bold"
+                  className="bg-[#181829] hover:bg-pink-hot hover:text-black border border-zinc-800 px-2.5 py-1 transition-colors uppercase font-bold flex items-center gap-1.5"
                 >
-                  {d.shortName}
+                  <div
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: d.primaryColor }}
+                  />
+                  <span>
+                    {d.shortName} ({d.badgeText})
+                  </span>
                 </Link>
               ))}
             </div>
@@ -198,3 +204,4 @@ export default function Hero() {
     </section>
   );
 }
+

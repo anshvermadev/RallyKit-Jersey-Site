@@ -50,3 +50,4 @@ export const FAQS: FAQItem[] = [
     answer: 'This is an official interactive DEMO sandbox portal. NO REAL MONEY is charged to your card or UPI account. You can test UPI (Google Pay, PhonePe, Paytm), Card, or Cash-On-Collection in Demo Mode to receive an authentic simulated receipt and collection QR pass.',
   },
 ];
+

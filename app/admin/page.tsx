@@ -453,7 +453,6 @@ export default function AdminPage() {
               <option value="L">L</option>
               <option value="XL">XL</option>
               <option value="2XL">2XL</option>
-              <option value="3XL">3XL</option>
             </select>
           </div>
 
@@ -550,3 +549,4 @@ export default function AdminPage() {
     </div>
   );
 }
+

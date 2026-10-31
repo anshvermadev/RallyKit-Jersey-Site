@@ -58,3 +58,4 @@ export class DemoPaymentProvider implements PaymentProvider {
 }
 
 export const currentPaymentProvider: PaymentProvider = new DemoPaymentProvider();
+

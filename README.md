@@ -326,3 +326,4 @@ This web application operates strictly in **DEMO SIMULATION MODE**. No monetary 
 
 ## 📄 License
 MIT © 2026 JERSEY HQ. All rights reserved.
+

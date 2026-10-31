@@ -3,12 +3,13 @@ import { persist } from 'zustand/middleware';
 import { DEPARTMENTS, Department } from '@/data/departments';
 
 export type CameraView = 'front' | 'back' | 'left' | 'right' | 'perspective';
+export type JerseySize = 'XS' | 'S' | 'M' | 'L' | 'XL' | '2XL';
 
 export interface CustomizerState {
   department: Department;
   customName: string;
   jerseyNumber: number;
-  size: 'XS' | 'S' | 'M' | 'L' | 'XL' | '2XL' | '3XL';
+  size: JerseySize;
   sleeveColor: string;
   collarColor: string;
   cameraView: CameraView;
@@ -19,7 +20,7 @@ export interface CustomizerState {
   setDepartment: (dept: Department) => void;
   setCustomName: (name: string) => void;
   setJerseyNumber: (num: number) => void;
-  setSize: (size: 'XS' | 'S' | 'M' | 'L' | 'XL' | '2XL' | '3XL') => void;
+  setSize: (size: JerseySize) => void;
   setSleeveColor: (color: string) => void;
   setCollarColor: (color: string) => void;
   setCameraView: (view: CameraView) => void;
@@ -86,3 +87,4 @@ export const useCustomizerStore = create<CustomizerState>()(
     }
   )
 );
+

@@ -20,7 +20,7 @@ export default function DepartmentSlider() {
       {/* Background Esports Decals */}
       <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#000000_2px,transparent_2px)] [background-size:24px_24px] pointer-events-none" />
       <div className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/4 font-display text-[180px] font-black italic text-black/5 select-none pointer-events-none">
-        DEPARTMENTS
+        5 BRANCHES
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -29,7 +29,7 @@ export default function DepartmentSlider() {
           <div>
             <div className="inline-flex items-center gap-2 bg-black text-yellow-electric text-xs font-mono font-bold px-3 py-1 uppercase skew-tag mb-2">
               <Sparkles className="w-3.5 h-3.5 skew-tag-inner" />
-              <span className="skew-tag-inner">CHOOSE YOUR SQUAD COLORWAY</span>
+              <span className="skew-tag-inner">5 OFFICIAL BRANCH COLORWAYS</span>
             </div>
             <h2 className="font-display text-5xl sm:text-6xl md:text-7xl font-black italic tracking-tight uppercase leading-none text-black">
               DEPARTMENT LINEUP
@@ -77,33 +77,15 @@ export default function DepartmentSlider() {
                   </span>
                 </div>
 
-                {/* Jersey Silhouette Preview */}
-                <div className="relative w-full h-44 bg-[#141424] border border-[#232338] flex items-center justify-center overflow-hidden mb-4 group-hover:border-pink-hot transition-colors">
-                  {/* Stylized Jersey Vector */}
-                  <svg viewBox="0 0 160 180" className="w-32 h-36 drop-shadow-xl group-hover:scale-110 transition-transform duration-300">
-                    <path
-                      d="M 25,45 L 0,70 L 20,105 L 40,75 Z"
-                      fill={dept.secondaryColor}
-                    />
-                    <path
-                      d="M 135,45 L 160,70 L 140,105 L 120,75 Z"
-                      fill={dept.secondaryColor}
-                    />
-                    <path
-                      d="M 35,45 L 125,45 L 130,170 L 30,170 Z"
-                      fill={dept.primaryColor}
-                    />
-                    <path d="M 55,45 Q 80,75 105,45 Z" fill={dept.collarColors[0] || '#FFE600'} />
-                  </svg>
-
-                  {/* Centered Crest Text */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="font-display text-2xl font-black text-white italic tracking-wider drop-shadow-md">
-                      {dept.shortName}
-                    </span>
-                    <span className="font-mono text-[9px] text-yellow-electric font-bold tracking-widest mt-1">
-                      {dept.batch}
-                    </span>
+                {/* Jersey Image Preview */}
+                <div className="relative w-full h-52 bg-[#0B0B12] border border-[#232338] flex items-center justify-center overflow-hidden mb-4 group-hover:border-pink-hot transition-colors p-2">
+                  <img
+                    src={dept.frontImage}
+                    alt={dept.name}
+                    className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-xl"
+                  />
+                  <div className="absolute bottom-2 right-2 bg-black/80 text-[10px] font-mono text-yellow-electric px-2 py-0.5">
+                    3D VIEW →
                   </div>
                 </div>
 

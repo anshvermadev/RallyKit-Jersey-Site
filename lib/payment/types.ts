@@ -37,3 +37,4 @@ export interface PaymentProvider {
   }>;
   verifyPayment(params: VerifyPaymentParams): Promise<PaymentResult>;
 }
+

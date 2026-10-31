@@ -37,3 +37,4 @@ export const NEWS_ITEMS: NewsItem[] = [
     summary: 'Ultra-light sweat-wicking poly-spandex blend engineered for high-intensity gaming stages and campus athletics.',
   },
 ];
+

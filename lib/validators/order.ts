@@ -31,7 +31,9 @@ export const StudentSchema = z.object({
 });
 
 export const JerseyCustomizationSchema = z.object({
-  departmentSlug: z.string().min(1, 'Department slug is required'),
+  departmentSlug: z.enum(['cse', 'csbs', 'it', 'aiml', 'extc'], {
+    errorMap: () => ({ message: 'Please select one of the 5 official departments' }),
+  }),
   departmentName: z.string().min(1, 'Department name is required'),
   customName: z
     .string()
@@ -45,8 +47,8 @@ export const JerseyCustomizationSchema = z.object({
     .int('Jersey number must be an integer')
     .min(0, 'Jersey number must be between 0 and 99')
     .max(99, 'Jersey number must be between 0 and 99'),
-  size: z.enum(['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'], {
-    errorMap: () => ({ message: 'Please select a valid size' }),
+  size: z.enum(['XS', 'S', 'M', 'L', 'XL', '2XL'], {
+    errorMap: () => ({ message: 'Please select a valid size (XS to 2XL)' }),
   }),
   sleeveColor: z.string().optional(),
   collarColor: z.string().optional(),
@@ -110,3 +112,4 @@ export type JerseyCustomizationData = z.infer<typeof JerseyCustomizationSchema>;
 export type DemoPaymentFormData = z.infer<typeof DemoPaymentFormSchema>;
 export type CreateOrderRequest = z.infer<typeof CreateOrderRequestSchema>;
 export type OrderLookupRequest = z.infer<typeof OrderLookupSchema>;
+

@@ -46,10 +46,10 @@ export default function StatsStrip() {
     {
       id: 'stat-1',
       icon: Layers,
-      value: 8,
-      suffix: '+',
+      value: 5,
+      suffix: '',
       label: 'DEPARTMENTS',
-      sublabel: 'Custom tailored esports kits',
+      sublabel: 'Official campus branch colorways',
       bgClass: 'bg-pink-hot text-black',
       shadowClass: 'shadow-hard-yellow',
     },
@@ -116,3 +116,4 @@ export default function StatsStrip() {
     </section>
   );
 }
+

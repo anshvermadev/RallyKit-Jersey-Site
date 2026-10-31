@@ -32,7 +32,6 @@ export async function GET(req: NextRequest) {
       L: 0,
       XL: 0,
       '2XL': 0,
-      '3XL': 0,
     };
     const statusCounts: Record<string, number> = {
       Registered: 0,
@@ -106,3 +105,4 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

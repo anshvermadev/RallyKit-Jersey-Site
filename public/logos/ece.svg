@@ -2,3 +2,4 @@
   <polygon points="50,5 95,25 95,75 50,95 5,75 5,25" stroke="#FF1744" stroke-width="6" fill="#13131F" />
   <path d="M25 50 L40 30 L60 70 L75 50" stroke="#CCFF00" stroke-width="6" stroke-linecap="round" />
 </svg>
+
