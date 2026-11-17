@@ -1,0 +1,2408 @@
+<!doctype html>
+<!--
+  RallyKit — college fest jersey showcase.
+  Single file. Serve the folder over HTTP (the alpha-cut reads pixels from the
+  jersey photos, which browsers block on file://):
+      python -m http.server 8080      or      npx serve .
+  Debug the photo cut-outs with  /index.html?debug=cut
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ALKEMY 2027 · Department Jerseys | RallyKit</title>
+<meta name="description" content="ALKEMY 2027 Department Jersey Collection — pick your department, put your name and number on the back, and order.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<style>
+:root{
+  --ink:#141414;
+  --cream:#f3eee4;
+  --dark:#121212;
+  --branch:#1a2740;
+  --on-branch:#f3eee4;
+  --pop:#ffcf33;
+  --ease:cubic-bezier(.22,.8,.24,1);
+  --u:min(calc(100vw / 1440), calc(100svh / 900));   /* 1px of the 1440x900 hero frame */
+  --w:calc(100vw / 1440);                             /* width-only unit */
+  --n:5;                                              /* number of designs (set from JS) */
+  --ja:.9;                                            /* jersey wrapper aspect (set from JS) */
+  --display:'Anton','Archivo Black',Impact,'Arial Narrow',sans-serif;
+  --mono:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (max-width:819px){ :root{ --u:calc(100vw / 390); } }
+
+*{box-sizing:border-box}
+html{overflow-x:clip;scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--cream);color:var(--ink);font-family:var(--mono);overflow-x:clip;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--pop);outline-offset:3px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ───────── layers ───────── */
+#bg{position:fixed;inset:0;z-index:0;background:var(--branch);overflow:hidden;transition:background-color 0s}
+#bg .reveal{position:absolute;left:0;top:0;border-radius:50%;pointer-events:none;will-change:transform}
+#gl{position:fixed;inset:0;width:100vw;height:100vh;z-index:2;pointer-events:none;display:block}
+
+/* ───────── nav ───────── */
+.nav{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;justify-content:space-between;
+  padding:calc(var(--u)*22) calc(var(--u)*40);pointer-events:none;--nav-fg:var(--on-branch)}
+.nav>*{pointer-events:auto}
+body[data-zone="light"] .nav{--nav-fg:var(--ink)}
+body[data-zone="dark"] .nav{--nav-fg:var(--cream)}
+.nav{transition:background-color .4s var(--ease),box-shadow .4s var(--ease)}
+body[data-zone="light"] .nav{background:rgba(243,238,228,.86);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 1px 0 rgba(20,20,20,.06)}
+body[data-zone="dark"] .nav{background:rgba(18,18,18,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--nav-fg);transition:color .5s var(--ease)}
+.brand svg{width:34px;height:34px}
+.brand span{font-family:var(--display);font-size:24px;letter-spacing:.02em;text-transform:uppercase}
+.nav-pill{display:flex;gap:2px;padding:5px;border-radius:999px;background:rgba(243,238,228,.92);backdrop-filter:blur(10px);box-shadow:0 6px 24px rgba(0,0,0,.12)}
+.nav-pill a{padding:9px 18px;border-radius:999px;text-decoration:none;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);transition:background .3s var(--ease),color .3s var(--ease)}
+.nav-pill a:hover{background:rgba(20,20,20,.08)}
+.nav-pill a.on{background:var(--ink);color:var(--cream)}
+.nav-right{display:flex;align-items:center;gap:10px}
+.cart-chip{position:relative;display:flex;align-items:center;gap:8px;border:0;border-radius:999px;padding:10px 16px;background:rgba(243,238,228,.92);color:var(--ink);font-size:13px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 6px 24px rgba(0,0,0,.12)}
+.cart-chip svg{width:18px;height:18px}
+.badge{min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--ink);color:var(--cream);display:grid;place-items:center;font-size:12px;font-weight:500}
+.badge.bump{animation:bump .5s var(--ease)}
+@keyframes bump{0%{transform:scale(1)}35%{transform:scale(1.45)}100%{transform:scale(1)}}
+.cta{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:999px;background:var(--pop);color:var(--ink);text-decoration:none;font-size:13px;letter-spacing:.06em;text-transform:uppercase;font-weight:500;box-shadow:0 6px 24px rgba(0,0,0,.14);transition:transform .3s var(--ease)}
+.cta:hover{transform:translateY(-2px)}
+.cart-panel{position:fixed;top:78px;right:calc(var(--u)*40);z-index:11;width:min(360px,calc(100vw - 32px));max-height:min(70vh,520px);overflow:auto;background:var(--cream);color:var(--ink);border-radius:18px;padding:18px;box-shadow:0 24px 60px rgba(0,0,0,.28)}
+.cart-panel h4{margin:0 0 10px;font-family:var(--display);font-size:24px;font-weight:400;text-transform:uppercase}
+.cart-panel ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.cart-panel li{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:8px 0;border-bottom:1px dashed rgba(20,20,20,.2)}
+.cart-panel li button{border:0;background:none;padding:0 4px;opacity:.6}
+.cart-panel .total{display:flex;justify-content:space-between;margin-top:12px;font-weight:500}
+.cart-panel .empty{opacity:.6;font-size:13px}
+.bottom-nav{display:none}
+
+/* ───────── intro ───────── */
+#intro{position:fixed;inset:0;z-index:20;background:var(--ink);color:var(--cream);display:grid;place-items:center;transition:transform 1s var(--ease)}
+#intro.done{transform:translateY(-101%)}
+#intro .word{display:flex;font-family:var(--display);font-size:clamp(64px,14vw,200px);line-height:1;overflow:hidden}
+#intro .word span{display:inline-block;transform:translateY(105%);animation:rise .9s var(--ease) forwards}
+@keyframes rise{to{transform:translateY(0)}}
+#intro .status{position:absolute;bottom:48px;left:0;right:0;text-align:center;font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.7;padding:0 24px}
+#intro .status.err{opacity:1;color:#ff8a7a;text-transform:none;letter-spacing:.02em;font-size:14px;line-height:1.6}
+#intro .bar{position:absolute;bottom:32px;left:50%;width:160px;height:2px;margin-left:-80px;background:rgba(243,238,228,.2);overflow:hidden}
+#intro .bar i{display:block;height:100%;width:0;background:var(--pop);transition:width .3s var(--ease)}
+
+/* ───────── hero ───────── */
+#jerseys{position:relative;height:100svh;min-height:560px;overflow:clip;color:var(--on-branch);touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:grab}
+#jerseys.dragging{cursor:grabbing}
+.hero-under,.hero-over{position:absolute;inset:0}
+.hero-under{z-index:1;pointer-events:none}
+.hero-over{z-index:3;pointer-events:none}
+.hero-over button,.hero-over a{pointer-events:auto}
+.rings{position:absolute;left:50%;top:calc(50% + var(--u)*40);width:0;height:0}
+.rings i{position:absolute;left:0;top:0;border-radius:50%;border:1px solid var(--on-branch);opacity:.16;transform:translate(-50%,-50%);transition:border-color .6s var(--ease)}
+.rings i:nth-child(1){width:calc(var(--u)*640);height:calc(var(--u)*640)}
+.rings i:nth-child(2){width:calc(var(--u)*840);height:calc(var(--u)*840);opacity:.11}
+.rings i:nth-child(3){width:calc(var(--u)*1060);height:calc(var(--u)*1060);opacity:.07}
+.rings.pulse i{animation:ringPulse 1s var(--ease)}
+@keyframes ringPulse{0%{transform:translate(-50%,-50%) scale(.86)}100%{transform:translate(-50%,-50%) scale(1)}}
+.counter{position:absolute;right:calc(var(--u)*72);top:calc(var(--u)*118);display:flex;align-items:baseline;gap:calc(var(--u)*10)}
+.cnt-now{font-family:var(--display);font-size:calc(var(--u)*168);line-height:.9;color:transparent;-webkit-text-stroke:1.5px var(--on-branch);opacity:.6}
+.cnt-of{font-size:calc(var(--u)*16);letter-spacing:.12em;opacity:.7}
+.bits{position:absolute;inset:0;transform:translate(calc(var(--px,0)*-14px),calc(var(--py,0)*-10px));transition:transform .6s var(--ease)}
+.bit{position:absolute;left:var(--x);top:var(--y);width:calc(var(--u)*var(--s));height:calc(var(--u)*var(--s));color:var(--on-branch);opacity:.28;animation:floaty var(--t,7s) ease-in-out infinite alternate;animation-delay:var(--dl,0s)}
+.bit svg{width:100%;height:100%;display:block;transform:rotate(var(--r,0deg))}
+@keyframes floaty{0%{translate:0 0;rotate:-6deg}100%{translate:0 calc(var(--u)*-26);rotate:8deg}}
+.hero-fallback{position:absolute;left:50%;top:calc(50% + var(--u)*40);height:calc(var(--u)*610);transform:translate(-50%,-50%);display:none}
+body.no-gl .hero-fallback{display:block}
+
+.hero-copy{position:absolute;left:calc(var(--u)*72);top:calc(var(--u)*118);max-width:calc(var(--u)*560)}
+.eyebrow{font-size:calc(var(--u)*13);letter-spacing:.16em;text-transform:uppercase;opacity:.75;margin:0 0 calc(var(--u)*10)}
+.hero-title{display:grid;margin:0;font-family:var(--display);font-weight:400;font-size:calc(var(--u)*168);line-height:.88;letter-spacing:.005em;text-transform:uppercase}
+.hero-title>span{grid-area:1/1}
+.hero-tag{margin:calc(var(--u)*14) 0 0;font-size:calc(var(--u)*15);letter-spacing:.04em;opacity:.85}
+.hero-shop{display:inline-flex;margin-top:calc(var(--u)*18);padding:10px 18px;border-radius:999px;border:1px solid currentColor;text-decoration:none;font-size:12px;letter-spacing:.1em;text-transform:uppercase;transition:background .3s var(--ease),color .3s var(--ease)}
+.hero-shop:hover{background:var(--on-branch);color:var(--branch)}
+.hero-ctrl{position:absolute;left:calc(var(--u)*72);right:calc(var(--u)*72);bottom:calc(var(--u)*40);display:flex;align-items:center;justify-content:space-between}
+.autoplay{display:flex;align-items:center;gap:10px;border:1px solid currentColor;background:transparent;border-radius:999px;padding:8px 16px 8px 8px;font-size:12px;letter-spacing:.1em;text-transform:uppercase}
+.autoplay svg{width:28px;height:28px;transform:rotate(-90deg)}
+.autoplay circle{fill:none;stroke:currentColor;stroke-width:2}
+.autoplay circle.trk{opacity:.25}
+.autoplay .ico{position:relative;width:28px;height:28px}
+.autoplay .ico b{position:absolute;inset:0;display:grid;place-items:center;font-size:10px}
+.scroll-hint{font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.7;display:flex;align-items:center;gap:10px}
+.scroll-hint i{display:block;width:1px;height:28px;background:currentColor;animation:hint 1.8s var(--ease) infinite;transform-origin:top}
+@keyframes hint{0%{transform:scaleY(0)}60%{transform:scaleY(1)}100%{transform:scaleY(1);opacity:0}}
+.arrows{display:flex;gap:10px}
+.arrow{width:calc(var(--u)*64);height:calc(var(--u)*64);min-width:48px;min-height:48px;border-radius:50%;border:1px solid currentColor;background:transparent;display:grid;place-items:center;transition:background .3s var(--ease),color .3s var(--ease),transform .3s var(--ease)}
+.arrow:hover{background:var(--on-branch);color:var(--branch)}
+.arrow:active{transform:scale(.92)}
+.arrow svg{width:22px;height:22px}
+.arrow.next{width:calc(var(--u)*84);height:calc(var(--u)*84);background:var(--on-branch);color:var(--branch)}
+
+/* ───────── fit ───────── */
+#fit{position:relative;height:450vh;height:450svh;color:var(--on-branch)}
+.fit-under{position:sticky;top:0;height:100svh;z-index:1;overflow:hidden;pointer-events:none}
+.fit-num{position:absolute;left:66%;top:52%;transform:translate(-50%,-50%);font-family:var(--display);font-size:calc(var(--u)*560);line-height:1;color:transparent;-webkit-text-stroke:2px var(--on-branch);opacity:.18;white-space:nowrap}
+#fitOver{position:fixed;inset:0;z-index:3;pointer-events:none;color:var(--on-branch);will-change:transform;visibility:hidden}
+.fit-copy{position:absolute;left:calc(var(--u)*96);top:50%;transform:translateY(-50%);width:calc(var(--u)*600)}
+.fit-label{font-size:calc(var(--u)*13);letter-spacing:.16em;text-transform:uppercase;opacity:.75}
+.fit-head{display:grid;margin:calc(var(--u)*14) 0 0;font-family:var(--display);font-weight:400;font-size:calc(var(--u)*120);line-height:.92;text-transform:uppercase}
+.fit-head>span{grid-area:1/1}
+.fit-cap{display:grid;margin:calc(var(--u)*20) 0 0;font-size:calc(var(--u)*17);opacity:.9}
+.fit-cap>span{grid-area:1/1}
+.fit-ticks{display:flex;gap:8px;margin-top:calc(var(--u)*34)}
+.fit-ticks i{display:block;width:calc(var(--u)*56);height:3px;border-radius:2px;background:currentColor;opacity:.22;transition:opacity .4s var(--ease)}
+.fit-ticks i.on{opacity:1}
+
+/* ───────── storm ───────── */
+.storm{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+#stormUnder{z-index:1}
+#stormOver{z-index:3}
+.storm i{position:absolute;left:0;top:0;width:34px;height:34px;opacity:0;will-change:transform,opacity}
+.storm svg{width:100%;height:100%;display:block}
+
+/* ───────── shop ───────── */
+#shop{position:relative;z-index:1;background:var(--cream);padding:120px 64px 110px}
+.sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:42px}
+.sec-head h2{margin:0;font-family:var(--display);font-weight:400;font-size:clamp(48px,7vw,112px);line-height:.9;text-transform:uppercase}
+.sec-head p{margin:0;max-width:340px;font-size:14px;line-height:1.6;opacity:.75}
+.sec-no{display:block;font-family:var(--mono);font-size:13px;letter-spacing:.16em;margin-bottom:12px;opacity:.6}
+.grid{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:16px}
+@media (max-width:1199px) and (min-width:820px){ .grid{grid-template-columns:repeat(3,minmax(0,1fr))} }
+.card{--c:#1a2740;--on:#f3eee4;background:var(--c);color:var(--on);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px;
+  opacity:0;translate:0 48px;transition:opacity .8s var(--ease) var(--d,0ms),translate .8s var(--ease) var(--d,0ms),scale .25s var(--ease),box-shadow .4s var(--ease);will-change:transform}
+.card.in{opacity:1;translate:0 0}
+.card.press{scale:.965}
+.card:hover{box-shadow:0 26px 50px rgba(0,0,0,.22)}
+.card-top{display:flex;justify-content:space-between;align-items:baseline}
+.card-top h3{margin:0;font-family:var(--display);font-weight:400;font-size:40px;line-height:1;text-transform:uppercase}
+.card-no{font-size:12px;letter-spacing:.12em;opacity:.7}
+.slot{position:relative;width:100%;aspect-ratio:var(--ja);border-radius:14px;background:radial-gradient(circle at 50% 42%,rgba(255,255,255,.16),transparent 66%)}
+.slot canvas{position:absolute;inset:0;width:100%;height:100%}
+.card.live .slot canvas{visibility:hidden}
+body.no-gl .card.live .slot canvas{visibility:visible}
+.card-meta{display:flex;align-items:center;gap:8px}
+.live-tag{display:none;font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:4px 8px;border-radius:999px;background:var(--on);color:var(--c);white-space:nowrap}
+.card.live .live-tag{display:inline-block}
+.sizes{display:flex;gap:6px}
+.sizes button{flex:1;min-width:0;padding:8px 0;border-radius:10px;border:1px solid color-mix(in srgb,var(--on) 35%,transparent);background:transparent;font-size:12px}
+.sizes button[aria-checked="true"]{background:var(--on);color:var(--c);border-color:var(--on)}
+.custom-toggle{border:0;background:none;padding:0;text-align:left;font-size:12px;letter-spacing:.06em;text-decoration:underline;text-underline-offset:3px;opacity:.85}
+.custom{display:none;gap:6px}
+.card.custom-open .custom{display:flex}
+.custom input,.kslot input,.kslot select{min-width:0;border-radius:10px;border:1px solid color-mix(in srgb,currentColor 35%,transparent);background:rgba(255,255,255,.08);padding:8px 10px;font-size:12px;text-transform:uppercase}
+.custom input[name="name"]{flex:2}
+.custom input[name="num"]{flex:1}
+input::placeholder{color:currentColor;opacity:.55}
+.card-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto}
+.price{font-size:15px;font-weight:500}
+.add{border:0;border-radius:999px;padding:10px 16px;background:var(--on);color:var(--c);font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;transition:transform .2s var(--ease)}
+.add:active{transform:scale(.94)}
+.field-err{outline:2px solid #ff6b5b}
+
+/* ───────── kit ───────── */
+#kit{position:relative;z-index:1;background:var(--dark);color:var(--cream);padding:120px 64px 120px}
+.kit-wrap{display:grid;grid-template-columns:260px 1fr;gap:28px;align-items:start}
+.palette{display:grid;gap:10px}
+.palette h4,.slots-head h4{margin:0 0 4px;font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:400;opacity:.6}
+.pal{display:flex;align-items:center;gap:12px;padding:8px 12px 8px 8px;border-radius:16px;border:1px solid rgba(243,238,228,.14);background:rgba(243,238,228,.04);text-align:left;transition:background .3s var(--ease),transform .2s var(--ease)}
+.pal:hover{background:rgba(243,238,228,.1)}
+.pal:active{transform:scale(.97)}
+.pal canvas{width:56px;height:calc(56px / var(--ja));border-radius:10px;background:var(--c)}
+.pal b{font-family:var(--display);font-weight:400;font-size:24px;text-transform:uppercase;display:block}
+.pal small{font-size:11px;opacity:.6}
+.slots-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.stepper{display:flex;align-items:center;gap:12px;font-size:13px}
+.stepper button{width:34px;height:34px;border-radius:50%;border:1px solid rgba(243,238,228,.3);background:transparent}
+.stepper button:disabled{opacity:.3;cursor:default}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.kslot{position:relative;border-radius:18px;border:1.5px dashed rgba(243,238,228,.25);padding:12px;display:grid;gap:8px;transition:border-color .3s var(--ease),background .3s var(--ease)}
+.kslot.active{border-color:var(--pop);border-style:solid}
+.kslot.filled{background:var(--c);color:var(--on);border-style:solid;border-color:transparent}
+.kslot.filled.active{border-color:var(--pop)}
+.kslot-pick{border:0;background:rgba(243,238,228,.05);border-radius:12px;aspect-ratio:var(--ja);display:grid;place-items:center;padding:0;position:relative;overflow:hidden}
+.kslot.filled .kslot-pick{background:radial-gradient(circle at 50% 42%,rgba(255,255,255,.16),transparent 66%)}
+.kslot-pick canvas{position:absolute;inset:0;width:100%;height:100%}
+.kslot-pick span{font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.6;padding:0 12px;text-align:center}
+.kslot-title{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.8}
+.kslot-title b{font-family:var(--display);font-weight:400;font-size:22px;letter-spacing:.02em}
+.kslot-fields{display:grid;grid-template-columns:auto 1fr 64px;gap:6px}
+.kslot select{text-transform:none;background:rgba(0,0,0,.15)}
+.kslot select option{color:var(--ink)}
+.kslot-clear{position:absolute;right:10px;top:10px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(0,0,0,.25);color:#fff;font-size:14px;line-height:1}
+.bundle{margin-top:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:18px 20px;border-radius:18px;background:rgba(243,238,228,.06);border:1px solid rgba(243,238,228,.12)}
+.bundle-line{font-size:14px;line-height:1.6}
+.bundle-line s{opacity:.5}
+.bundle-line b{font-family:var(--display);font-weight:400;font-size:28px;letter-spacing:.02em;margin-left:6px}
+.buy{border:0;border-radius:999px;padding:14px 26px;background:var(--pop);color:var(--ink);font-size:13px;letter-spacing:.1em;text-transform:uppercase;font-weight:500;transition:transform .2s var(--ease),opacity .3s}
+.buy:disabled{opacity:.35;cursor:not-allowed}
+.buy:not(:disabled):active{transform:scale(.95)}
+.note{font-size:11px;opacity:.5;margin-top:10px}
+footer{position:relative;z-index:1;background:var(--dark);color:rgba(243,238,228,.55);padding:28px 64px 40px;font-size:12px;display:flex;justify-content:space-between;border-top:1px solid rgba(243,238,228,.08)}
+
+.fly{position:fixed;left:0;top:0;z-index:30;pointer-events:none;border-radius:12px;will-change:transform,opacity}
+.toast{position:fixed;left:50%;bottom:28px;z-index:40;transform:translate(-50%,calc(100% + 40px));visibility:hidden;background:var(--ink);color:var(--cream);padding:12px 20px;border-radius:999px;font-size:13px;transition:transform .5s var(--ease),visibility 0s .5s;box-shadow:0 12px 30px rgba(0,0,0,.25)}
+.toast.show{transform:translate(-50%,0);visibility:visible;transition:transform .5s var(--ease)}
+
+/* ───────── phone ───────── */
+@media (max-width:819px){
+  .nav{padding:14px 16px}
+  .nav-pill,.cta{display:none}
+  .brand span{font-size:20px}
+  .cart-panel{top:64px;right:16px}
+  .bottom-nav{display:flex;position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:10;gap:2px;padding:5px;border-radius:999px;background:rgba(243,238,228,.94);backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,.22)}
+  .bottom-nav a{padding:10px 14px;border-radius:999px;text-decoration:none;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
+  .bottom-nav a.on{background:var(--ink);color:var(--cream)}
+  .toast{bottom:84px}
+
+  .hero-copy{left:0;right:0;top:74px;max-width:none;text-align:center}
+  .eyebrow{font-size:11px}
+  .hero-title{font-size:76px;justify-items:center}
+  .hero-tag{font-size:13px;margin-top:8px}
+  .hero-shop{display:none}
+  .counter{right:16px;top:auto;bottom:150px}
+  .cnt-now{font-size:56px}
+  .cnt-of{font-size:11px}
+  .rings{top:57%}
+  .hero-ctrl{left:16px;right:16px;bottom:88px}
+  .scroll-hint{display:none}
+  .arrow{width:48px;height:48px}
+  .arrow.next{width:56px;height:56px}
+  .hero-fallback{top:57%;height:46vh}
+
+  .fit-num{left:50%;top:34%;font-size:300px}
+  .fit-copy{left:20px;right:20px;width:auto;top:auto;bottom:96px;transform:none}
+  .fit-label{font-size:11px}
+  .fit-head{font-size:52px}
+  .fit-cap{font-size:14px;margin-top:12px}
+  .fit-ticks{margin-top:18px}
+  .fit-ticks i{width:44px}
+
+  #shop{padding:96px 0 90px}
+  .sec-head{flex-direction:column;align-items:flex-start;padding:0 20px;margin-bottom:28px}
+  .grid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:14px;padding:6px 20px 16px;scrollbar-width:none;overscroll-behavior-x:contain}
+  .grid::-webkit-scrollbar{display:none}
+  .card{flex:0 0 78%;scroll-snap-align:center}
+  .card-top h3{font-size:34px}
+
+  #kit{padding:96px 20px 120px}
+  .kit-wrap{grid-template-columns:1fr}
+  .palette{grid-template-columns:repeat(var(--n),minmax(64px,1fr));overflow-x:auto;gap:8px}
+  .palette h4{grid-column:1/-1}
+  .pal{flex-direction:column;align-items:center;padding:8px;gap:6px;text-align:center}
+  .pal canvas{width:48px;height:calc(48px / var(--ja))}
+  .pal b{font-size:18px}
+  .pal small{display:none}
+  .slots{grid-template-columns:1fr 1fr}
+  .kslot-fields{grid-template-columns:1fr 1fr}
+  .kslot-fields select{grid-column:1/-1}
+  .bundle{flex-direction:column;align-items:stretch}
+  footer{padding:24px 20px 96px;flex-direction:column;gap:6px}
+}
+
+/* ───────── reduced motion ───────── */
+@media (prefers-reduced-motion:reduce){
+  .bit,.scroll-hint i{animation:none}
+  .rings.pulse i{animation:none}
+  #intro{transition:opacity .3s}
+  #intro.done{transform:none;opacity:0;pointer-events:none}
+  #intro .word span{animation:none;transform:none}
+  .card{transition:none;opacity:1;translate:0 0}
+}
+
+/* ───────── views: product page, checkout, confirmation ───────── */
+[hidden]{display:none !important}
+body:not([data-view="home"]) main,
+body:not([data-view="home"]) #fitOver,
+body:not([data-view="home"]) .storm { display:none !important }
+.view{position:relative;z-index:1;min-height:100svh;background:var(--cream);color:var(--ink);padding:104px 40px 80px}
+.view[hidden]{display:none}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;text-decoration:none;opacity:.75}
+.back-link:hover{opacity:1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);border-radius:999px;padding:13px 22px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;text-decoration:none;transition:transform .2s var(--ease),background .3s var(--ease),color .3s var(--ease)}
+.btn:hover{background:var(--ink);color:var(--cream)}
+.btn:active{transform:scale(.96)}
+.btn.primary{background:var(--ink);color:var(--cream)}
+.btn.primary:hover{background:#000}
+.btn.pop{background:var(--pop);border-color:var(--pop);color:var(--ink)}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.link-btn{border:0;background:none;padding:0;font-size:12px;letter-spacing:.06em;text-decoration:underline;text-underline-offset:3px;opacity:.75}
+.link-btn:hover{opacity:1}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{min-width:52px;padding:10px 14px;border-radius:12px;border:1.5px solid rgba(20,20,20,.18);background:#fff;font-size:13px;transition:border-color .2s,background .2s,color .2s}
+.chips button:hover{border-color:var(--ink)}
+.chips button[aria-pressed="true"]{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+.chips .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:-1px;background:var(--c);box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+.field{display:grid;gap:6px}
+.field label,.fs-legend{font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.7}
+.field input,.field select{width:100%;border:1.5px solid rgba(20,20,20,.18);background:#fff;border-radius:12px;padding:12px 14px;font-size:15px;transition:border-color .2s}
+.field input:focus,.field select:focus{outline:none;border-color:var(--ink)}
+.field input[readonly]{background:rgba(20,20,20,.04);font-weight:500}
+.field .hint{font-size:11px;opacity:.55}
+.field .err{font-size:12px;color:#c0392b;min-height:0}
+.field.invalid input,.field.invalid select{border-color:#c0392b;background:#fff7f6}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:12px;line-height:1.5;opacity:.85}
+.check input{margin-top:2px;width:16px;height:16px;accent-color:var(--ink)}
+.check.invalid{color:#c0392b;opacity:1}
+
+/* 3D stage (the jersey itself is drawn by the shared WebGL canvas, clipped to this box) */
+.stage{position:relative;border-radius:28px;background:radial-gradient(circle at 50% 38%,color-mix(in srgb,var(--c) 70%,#fff 30%),var(--c) 62%);color:var(--on);overflow:hidden;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.stage.grabbing{cursor:grabbing}
+.stage-ctrl{position:absolute;left:16px;right:16px;bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:10px;pointer-events:none}
+.stage-ctrl>*{pointer-events:auto}
+.seg{display:flex;padding:4px;border-radius:999px;background:rgba(243,238,228,.92);color:var(--ink);box-shadow:0 6px 20px rgba(0,0,0,.15)}
+.seg button{border:0;background:transparent;border-radius:999px;padding:8px 16px;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--cream)}
+.zoom{display:flex;gap:6px}
+.zoom button{width:40px;height:40px;border-radius:50%;border:0;background:rgba(243,238,228,.92);color:var(--ink);font-size:18px;box-shadow:0 6px 20px rgba(0,0,0,.15)}
+.stage-hint{position:absolute;top:16px;left:0;right:0;text-align:center;font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.7;pointer-events:none}
+.stage-note{position:absolute;top:44px;left:16px;right:16px;text-align:center;font-size:12px;background:rgba(0,0,0,.35);border-radius:10px;padding:8px}
+
+.pdp{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,1fr);gap:40px;max-width:1360px;margin:0 auto}
+.pdp-stage-wrap{display:grid;gap:12px;align-content:start}
+#pdpStage{height:calc(100svh - 170px);min-height:520px}
+.pdp-panel{display:grid;gap:22px;align-content:start;padding-top:28px}
+.pdp-panel h1{margin:0;font-family:var(--display);font-weight:400;font-size:clamp(56px,7vw,104px);line-height:.9;text-transform:uppercase}
+.pdp-price{margin:0;font-size:22px;font-weight:500}
+.pdp-price small{font-size:12px;font-weight:400;opacity:.6;margin-left:6px}
+.pdp-row{display:grid;grid-template-columns:1fr 120px;gap:12px}
+.pdp-actions{display:flex;gap:10px;flex-wrap:wrap}
+.pdp-actions .btn{flex:1}
+.pdp-specs{list-style:none;margin:0;padding:16px 0 0;border-top:1px solid rgba(20,20,20,.12);display:grid;gap:8px;font-size:13px;opacity:.75}
+.pdp-specs li::before{content:"✓ ";color:#2e7d32}
+
+.co{max-width:1280px;margin:0 auto}
+.co-head{display:grid;gap:10px;margin-bottom:28px}
+.co-head h1{margin:0;font-family:var(--display);font-weight:400;font-size:clamp(48px,6vw,88px);line-height:.9;text-transform:uppercase}
+.steps{display:flex;gap:8px;list-style:none;margin:0;padding:0;counter-reset:s}
+.steps li{counter-increment:s;font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:8px 14px;border-radius:999px;border:1.5px solid rgba(20,20,20,.15);opacity:.55}
+.steps li::before{content:counter(s) " · "}
+.steps li.on{opacity:1;background:var(--ink);color:var(--cream);border-color:var(--ink)}
+.steps li.done{opacity:1;border-color:var(--ink)}
+.co-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(320px,1fr);gap:36px;align-items:start}
+.co-main fieldset{border:0;margin:0 0 26px;padding:24px;border-radius:22px;background:#fff;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.co-main fieldset .wide{grid-column:1/-1}
+.co-main legend{float:left;width:100%;font-family:var(--display);font-size:28px;text-transform:uppercase;margin-bottom:4px;grid-column:1/-1}
+.qty{display:flex;align-items:center;gap:10px}
+.qty button{width:42px;height:42px;border-radius:50%;border:1.5px solid rgba(20,20,20,.2);background:#fff;font-size:18px}
+.qty output{min-width:28px;text-align:center;font-size:18px;font-weight:500}
+.co-side{position:sticky;top:92px;display:grid;gap:16px;padding:20px;border-radius:24px;background:#fff}
+#coStage{height:300px}
+.thumbs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.thumbs figure{margin:0;border-radius:16px;background:radial-gradient(circle at 50% 40%,color-mix(in srgb,var(--c) 70%,#fff 30%),var(--c) 70%);overflow:hidden}
+.thumbs canvas{display:block;width:100%;aspect-ratio:var(--ja)}
+.thumbs figcaption{font-size:10px;letter-spacing:.14em;text-transform:uppercase;text-align:center;padding:6px;background:rgba(255,255,255,.85)}
+.summary{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:0;font-size:13px}
+.summary dt{opacity:.6}
+.summary dd{margin:0;text-align:right;font-weight:500;word-break:break-word}
+.price-break{display:grid;gap:8px;padding-top:14px;border-top:1px dashed rgba(20,20,20,.2);font-size:13px}
+.price-break div{display:flex;justify-content:space-between}
+.price-break .total{font-size:18px;font-weight:600;padding-top:6px}
+.panel{padding:24px;border-radius:22px;background:#fff;display:grid;gap:18px;margin-bottom:26px}
+.panel h2{margin:0;font-family:var(--display);font-weight:400;font-size:28px;text-transform:uppercase}
+.review{display:grid;grid-template-columns:200px 1fr;gap:24px;align-items:start}
+.review .summary{font-size:14px}
+.row-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between}
+.demo-banner{display:flex;gap:10px;align-items:center;padding:12px 16px;border-radius:14px;background:#fff6d6;border:1.5px dashed #e0b400;font-size:13px}
+.tabs{display:flex;gap:8px}
+.tabs button{flex:1;padding:12px;border-radius:14px;border:1.5px solid rgba(20,20,20,.15);background:#fff;font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+.tabs button[aria-selected="true"]{border-color:var(--ink);background:var(--ink);color:var(--cream)}
+.pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.pay-grid .wide{grid-column:1/-1}
+.upi-box{display:grid;grid-template-columns:120px 1fr;gap:16px;align-items:center;padding:14px;border-radius:16px;background:rgba(20,20,20,.04)}
+.upi-qr{width:120px;height:120px;border-radius:10px;background:#fff;display:block}
+.shot-preview{max-width:160px;max-height:160px;border-radius:10px;display:block;margin-top:6px}
+.spinner{width:16px;height:16px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.ok{max-width:980px;margin:0 auto;display:grid;gap:26px}
+.ok-head{display:grid;gap:10px;justify-items:start}
+.ok-badge{width:64px;height:64px;border-radius:50%;background:#2e7d32;color:#fff;display:grid;place-items:center;font-size:30px}
+.ok-head h1{margin:0;font-family:var(--display);font-weight:400;font-size:clamp(48px,6vw,84px);line-height:.9;text-transform:uppercase}
+.ok-id{font-size:15px}
+.ok-id b{font-size:20px;letter-spacing:.06em}
+.ok-grid{display:grid;grid-template-columns:320px 1fr;gap:26px;align-items:start}
+
+@media (max-width:1023px){
+  .pdp,.co-grid{grid-template-columns:1fr}
+  #pdpStage{height:62svh;min-height:380px}
+  .pdp-panel{padding-top:0}
+  .co-side{position:static;order:-1}
+  .ok-grid{grid-template-columns:1fr}
+}
+@media (max-width:819px){
+  .view{padding:84px 16px 110px}
+  .co-main fieldset,.pay-grid{grid-template-columns:1fr}
+  .review{grid-template-columns:1fr}
+  .review .thumbs{max-width:320px}
+  .stage-ctrl{left:10px;right:10px;bottom:10px}
+  .seg button{padding:8px 12px}
+  #pdpStage{height:min(64svh,128vw);min-height:360px}
+  #coStage{height:min(300px,82vw)}
+  .stage-hint{font-size:9.5px;letter-spacing:.1em;top:14px}
+  .steps{gap:6px}
+  .steps li{font-size:10.5px;padding:7px 10px;white-space:nowrap;letter-spacing:.06em}
+  .co-head h1,.ok-head h1{font-size:46px}
+  .pdp-panel h1{font-size:64px}
+  .card-top h3{font-size:30px}
+  .printer-area{padding:16px 6px 14px}
+}
+
+#intro .sub{position:absolute;top:calc(50% + clamp(44px,8vw,116px));left:0;right:0;text-align:center;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--pop)}
+.card{cursor:pointer}
+a.custom-toggle{color:inherit}
+
+
+/* ───────── receipt printer ───────── */
+.ok-grid{grid-template-columns:260px minmax(0,1fr)}
+.printer-area{display:grid;justify-items:center;gap:0;padding:20px 12px 18px;border-radius:24px;background:linear-gradient(#ece6da,#e4ddd0)}
+.paper-stage{position:relative;width:100%;display:flex;align-items:flex-end;justify-content:center}
+.paper-clip{position:relative;height:0;overflow:hidden;transition:height 40ms linear;filter:drop-shadow(0 10px 18px rgba(0,0,0,.18));transform-origin:50% 100%}
+.paper{position:absolute;left:0;top:0;width:100%;background:#fff}
+.paper canvas{display:block;width:100%;height:auto}
+.printer-area{isolation:isolate}
+.paper-stage{z-index:1}
+/* receipt printer: housing (behind the paper) + front body whose top edge is the paper exit */
+.printer{position:relative;width:min(400px,100%);height:92px}
+.pr-housing{position:absolute;left:18px;right:18px;top:-22px;height:40px;z-index:0;border-radius:16px 16px 6px 6px;
+  background:linear-gradient(#3b3b3b,#1c1c1c 70%);box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
+.pr-front{position:absolute;inset:0;z-index:2;border-radius:8px 8px 22px 22px;background:linear-gradient(#2a2a2a,#121212 45%,#0b0b0b);
+  box-shadow:0 18px 30px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.1)}
+.pr-tear{position:absolute;left:28px;right:28px;top:-2px;height:6px;border-radius:2px;
+  background:repeating-linear-gradient(90deg,#e2e2e2 0 3px,#9c9c9c 3px 6px) top/100% 2px no-repeat,linear-gradient(#d4d4d4,#8a8a8a);
+  box-shadow:0 1px 2px rgba(0,0,0,.6)}
+.pr-front::before{content:"";position:absolute;left:30px;right:30px;top:4px;height:3px;border-radius:2px;opacity:0}
+.printing .pr-front::before{opacity:1;background:linear-gradient(90deg,transparent,rgba(255,207,51,.75),transparent) no-repeat;background-size:35% 100%;animation:head .45s linear infinite}
+@keyframes head{from{background-position:-35% 0}to{background-position:135% 0}}
+.pr-label{position:absolute;left:26px;bottom:20px;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:rgba(243,238,228,.5)}
+.pr-btn{position:absolute;right:52px;bottom:16px;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#5a5a5a,#262626);box-shadow:inset 0 -1px 2px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.08)}
+.pr-led{position:absolute;right:26px;bottom:23px;width:8px;height:8px;border-radius:50%;background:#2e7d32;box-shadow:0 0 6px #4caf50}
+.printing .pr-led{background:#ffcf33;box-shadow:0 0 8px #ffcf33;animation:blink .35s steps(2) infinite}
+@keyframes blink{50%{opacity:.25}}
+.printing .paper-clip{animation:jitter .09s steps(2) infinite}
+@keyframes jitter{50%{transform:translateX(.4px)}}
+.print-status{margin:12px 0 0;font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.65}
+.receipt-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:12px}
+.printed .receipt-actions{animation:fadeUp .5s var(--ease)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}}
+#rcptDialog{border:0;border-radius:22px;padding:0;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);background:var(--cream);box-shadow:0 30px 80px rgba(0,0,0,.4)}
+#rcptDialog::backdrop{background:rgba(20,20,20,.55);backdrop-filter:blur(3px)}
+.rcpt-bar{position:sticky;top:0;z-index:1;display:flex;gap:8px;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--cream);border-bottom:1px solid rgba(20,20,20,.1)}
+.rcpt-bar h2{margin:0;font-family:var(--display);font-weight:400;font-size:22px;text-transform:uppercase}
+.rcpt-bar .btn{padding:9px 16px}
+.rcpt-body{padding:18px;display:flex;justify-content:center}
+.rcpt-body canvas{box-shadow:0 8px 24px rgba(0,0,0,.15);background:#fff}
+@media (max-width:1023px){.ok-grid{grid-template-columns:1fr}.ok-grid .thumbs{max-width:420px}}
+@media (prefers-reduced-motion:reduce){.printing .paper-clip,.printing .pr-led,.printing .pr-front::before{animation:none}}
+
+/* ───────── debug=cut ───────── */
+body.debug-cut{background:#ff00ff;padding:20px}
+body.debug-cut>*:not(#debug){display:none!important}
+#debug{display:flex;flex-wrap:wrap;gap:12px}
+#debug figure{margin:0;background:repeating-conic-gradient(#ddd 0 25%,#fff 0 50%) 0 0/24px 24px}
+#debug figure.m{background:#ff00ff}
+#debug canvas{display:block;height:420px;width:auto}
+#debug figcaption{font:12px var(--mono);background:#000;color:#fff;padding:4px 8px}
+</style>
+</head>
+<body data-zone="branch">
+
+<div id="bg" aria-hidden="true"></div>
+<canvas id="gl" aria-hidden="true"></canvas>
+
+<header class="nav">
+  <a class="brand" href="#jerseys" aria-label="RallyKit home">
+    <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="currentColor"/><path d="M14 10l-6 4 2.6 5 2.4-1.2V30h14V17.8l2.4 1.2L32 14l-6-4h-2.4a3.6 3.6 0 0 1-7.2 0z" fill="var(--pop)"/></svg>
+    <span>RallyKit</span>
+  </a>
+  <nav class="nav-pill" aria-label="Sections">
+    <a href="#jerseys" data-sec="jerseys">Jerseys</a><a href="#fit" data-sec="fit">Fit</a><a href="#shop" data-sec="shop">Shop</a><a href="#kit" data-sec="kit">Kit</a>
+  </nav>
+  <div class="nav-right">
+    <button class="cart-chip" id="cartChip" aria-haspopup="dialog" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>
+      <span class="sr-only">Cart, </span><span class="badge" id="badge">0</span><span class="sr-only"> items</span>
+    </button>
+    <a class="cta" href="#shop">Reserve Yours</a>
+  </div>
+</header>
+<div class="cart-panel" id="cartPanel" role="dialog" aria-label="Cart" hidden></div>
+<nav class="bottom-nav" aria-label="Sections">
+  <a href="#jerseys" data-sec="jerseys">Jerseys</a><a href="#fit" data-sec="fit">Fit</a><a href="#shop" data-sec="shop">Shop</a><a href="#kit" data-sec="kit">Kit</a>
+</nav>
+
+<div id="intro" aria-live="polite">
+  <div class="word" aria-label="RallyKit"></div>
+  <div class="sub">ALKEMY 2027 · Department Jersey Collection</div>
+  <div class="status" id="introStatus">Cutting jerseys…</div>
+  <div class="bar"><i id="introBar"></i></div>
+</div>
+
+<main>
+  <!-- 1 · HERO -->
+  <section id="jerseys" aria-label="Choose your branch jersey">
+    <div class="hero-under">
+      <div class="rings" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="bits" id="bits" aria-hidden="true"></div>
+      <div class="counter" aria-hidden="true"><span class="cnt-now" id="cntNow">01</span><span class="cnt-of" id="cntOf">/ 05</span></div>
+      <canvas class="hero-fallback" id="heroFallback" aria-hidden="true"></canvas>
+    </div>
+    <div class="hero-over">
+      <div class="hero-copy">
+        <p class="eyebrow">ALKEMY 2027 · Department Jersey Collection</p>
+        <h1 class="hero-title" id="heroTitle" aria-live="polite"><span>CSE</span></h1>
+        <p class="hero-tag">Pick your branch. Rep your jersey.</p>
+        <a class="hero-shop" id="heroShop" href="#/jersey/cse">Customize CSE jersey →</a>
+      </div>
+      <div class="hero-ctrl">
+        <button class="autoplay" id="autoplay" aria-pressed="true">
+          <span class="ico"><svg viewBox="0 0 28 28" aria-hidden="true"><circle class="trk" cx="14" cy="14" r="12"/><circle id="apRing" cx="14" cy="14" r="12" stroke-dasharray="75.4" stroke-dashoffset="75.4"/></svg><b id="apIco">❚❚</b></span>
+          <span id="apTxt">Autoplay</span>
+        </button>
+        <div class="scroll-hint" aria-hidden="true"><i></i>Scroll · Fabric &amp; Fit</div>
+        <div class="arrows">
+          <button class="arrow prev" id="prevBtn" aria-label="Previous branch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg></button>
+          <button class="arrow next" id="nextBtn" aria-label="Next branch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · FABRIC & FIT -->
+  <section id="fit" aria-label="Fabric and fit">
+    <div class="fit-under" aria-hidden="true"><div class="fit-num" id="fitNum">01</div></div>
+  </section>
+
+  <!-- 3 · SHOP -->
+  <section id="shop" aria-label="Pick your branch">
+    <div class="sec-head">
+      <h2><span class="sec-no">03 — Shop</span>Pick Your<br>Branch</h2>
+      <p>The ALKEMY 2027 Department Jersey Collection — one cut, five department colourways. Tap a jersey to rotate it in 3D and put your name and number on the back.</p>
+    </div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <!-- 4 · KIT BUILDER -->
+  <section id="kit" aria-label="Build your squad kit">
+    <div class="sec-head">
+      <h2><span class="sec-no">04 — Squad</span>Build Your<br>Squad Kit</h2>
+      <p>Ordering for the whole crew? Fill every slot with a branch, size and back print, and the squad discount kicks in.</p>
+    </div>
+    <div class="kit-wrap">
+      <div class="palette" id="palette"><h4>Branches</h4></div>
+      <div>
+        <div class="slots-head">
+          <h4>Your squad</h4>
+          <div class="stepper"><button id="slotMinus" aria-label="Fewer teammates">−</button><span id="slotCount">4 teammates</span><button id="slotPlus" aria-label="More teammates">+</button></div>
+        </div>
+        <div class="slots" id="slots"></div>
+        <div class="bundle">
+          <div class="bundle-line" id="bundleLine"></div>
+          <button class="buy" id="buyBtn" disabled>Buy squad kit</button>
+        </div>
+        <p class="note">Prices and squad discount are placeholders.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ═══════════ PRODUCT PAGE  #/jersey/<dept> ═══════════ -->
+<section class="view" id="viewJersey" hidden aria-labelledby="pdpTitle">
+  <div class="pdp">
+    <div class="pdp-stage-wrap">
+      <a class="back-link" href="#shop">← All jerseys</a>
+      <div class="stage" id="pdpStage" data-pad="40 70" role="img" aria-label="3D jersey preview — drag to rotate">
+        <div class="stage-hint" aria-hidden="true">Drag to rotate · pinch or scroll to zoom</div>
+        <p class="stage-note" hidden>Live print preview needs the 3D model — your name and number will still be printed.</p>
+        <div class="stage-ctrl">
+          <div class="seg" role="group" aria-label="Jersey side"><button type="button" data-side="front" aria-pressed="true">Front</button><button type="button" data-side="back" aria-pressed="false">Back</button></div>
+          <div class="zoom"><button type="button" data-zoom="out" aria-label="Zoom out">−</button><button type="button" data-zoom="reset" aria-label="Reset view">⟲</button><button type="button" data-zoom="in" aria-label="Zoom in">+</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="pdp-panel">
+      <p class="eyebrow" style="margin:0">ALKEMY 2027 · Department Jersey Collection</p>
+      <h1 id="pdpTitle">CSE</h1>
+      <p class="pdp-price"><span id="pdpPrice">₹599</span><small>name &amp; number print included</small></p>
+      <div class="field"><span class="fs-legend" id="pdpDeptLbl">Department</span><div class="chips" id="pdpDept" role="group" aria-labelledby="pdpDeptLbl"></div></div>
+      <div class="field"><span class="fs-legend" id="pdpSizeLbl">Size</span><div class="chips" id="pdpSize" role="group" aria-labelledby="pdpSizeLbl"></div></div>
+      <div class="pdp-row">
+        <div class="field"><label for="pdpName">Name on back</label><input id="pdpName" maxlength="12" autocomplete="off" spellcheck="false" placeholder="YOUR NAME"><span class="hint">Letters, spaces, . ' - · max 12</span></div>
+        <div class="field"><label for="pdpNum">Number</label><input id="pdpNum" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="10"><span class="hint">0–99</span></div>
+      </div>
+      <div><button type="button" class="link-btn" id="pdpReset">Reset customization</button></div>
+      <div class="pdp-actions"><button type="button" class="btn primary" id="pdpOrder">Order this jersey →</button><button type="button" class="btn" id="pdpSave">Add to cart</button></div>
+      <ul class="pdp-specs"><li>Breathable athletic mesh, fitted cut</li><li>Fade-resistant sublimation print</li><li>Your name &amp; number printed on the back</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ CHECKOUT  #/checkout ═══════════ -->
+<section class="view" id="viewCheckout" hidden aria-labelledby="coTitle">
+  <div class="co">
+    <header class="co-head">
+      <a class="back-link" id="coBack" href="#/jersey/cse">← Back to customization</a>
+      <h1 id="coTitle">Checkout</h1>
+      <ol class="steps" aria-label="Checkout steps"><li data-step="1">Details</li><li data-step="2">Review</li><li data-step="3">Payment</li></ol>
+    </header>
+    <div class="co-grid">
+      <div class="co-main">
+        <!-- step 1 -->
+        <form id="coForm" novalidate>
+          <fieldset>
+            <legend>Your details</legend>
+            <div class="field wide"><label for="f-fullName">Full name</label><input id="f-fullName" name="fullName" autocomplete="name" required><small class="err" id="e-fullName"></small></div>
+            <div class="field"><label for="f-email">Email address</label><input id="f-email" name="email" type="email" autocomplete="email" required><small class="err" id="e-email"></small></div>
+            <div class="field"><label for="f-phone">Mobile number</label><input id="f-phone" name="phone" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel-national" placeholder="10 digits" required><small class="err" id="e-phone"></small></div>
+            <div class="field"><label for="f-aadhaar">Aadhaar number</label><input id="f-aadhaar" name="aadhaar" inputmode="numeric" maxlength="14" autocomplete="off" placeholder="XXXX XXXX XXXX" required><small class="err" id="e-aadhaar"></small></div>
+            <div class="field"><label for="f-prn">PRN / Roll number</label><input id="f-prn" name="prn" autocomplete="off" required><small class="err" id="e-prn"></small></div>
+            <label class="check wide" id="w-aadhaarConsent"><input type="checkbox" name="aadhaarConsent"> <span>I consent to sharing my Aadhaar number for identity verification of this order. Only the last 4 digits are kept with the order.</span></label>
+            <small class="err wide" id="e-aadhaarConsent"></small>
+            <div class="field"><label for="f-department">Department</label><select id="f-department" name="department" required></select><small class="err" id="e-department"></small></div>
+            <div class="field"><label for="f-year">Year</label><select id="f-year" name="year" required></select><small class="err" id="e-year"></small></div>
+          </fieldset>
+          <fieldset>
+            <legend>Your jersey</legend>
+            <div class="field"><label for="f-size">Jersey size</label><select id="f-size" name="size" required></select><small class="err" id="e-size"></small></div>
+            <div class="field"><label for="f-number">Jersey number</label><input id="f-number" name="number" inputmode="numeric" maxlength="2" placeholder="0–99" required><small class="err" id="e-number"></small></div>
+            <div class="field wide"><label for="f-printName">Jersey name</label><input id="f-printName" name="printName" maxlength="12" spellcheck="false" autocomplete="off" placeholder="Name printed on the back" required><small class="err" id="e-printName"></small></div>
+            <div class="field"><span class="fs-legend">Quantity</span><div class="qty"><button type="button" data-qty="-1" aria-label="Decrease quantity">−</button><output id="f-qtyOut" name="qty" aria-live="polite">1</output><button type="button" data-qty="1" aria-label="Increase quantity">+</button></div><small class="err" id="e-qty"></small></div>
+            <div class="field"><label for="f-amount">Payment amount</label><input id="f-amount" name="amount" readonly tabindex="-1"></div>
+          </fieldset>
+          <div class="row-actions"><a class="btn" id="coBack2" href="#/jersey/cse">← Customize</a><button class="btn primary" type="submit">Review order →</button></div>
+        </form>
+        <!-- step 2 -->
+        <div id="coReview" hidden>
+          <div class="panel">
+            <h2>Order summary</h2>
+            <div class="review">
+              <div class="thumbs" id="rvThumbs"><figure><canvas data-snap="front"></canvas><figcaption>Front</figcaption></figure><figure><canvas data-snap="back"></canvas><figcaption>Back</figcaption></figure></div>
+              <dl class="summary" id="rvList"></dl>
+            </div>
+          </div>
+          <div class="row-actions"><div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="btn" id="rvEditDetails">← Edit details</button><button type="button" class="btn" id="rvEditJersey">Edit jersey</button></div><button type="button" class="btn primary" id="rvPay">Proceed to payment →</button></div>
+        </div>
+        <!-- step 3 -->
+        <div id="coPay" hidden>
+          <div class="panel">
+            <h2>Payment</h2>
+            <div class="demo-banner" role="note">⚠️ <span><b>Demo checkout.</b> No real payment is taken and nothing is charged — this simulates the payment step.</span></div>
+            <div class="tabs" role="tablist"><button type="button" role="tab" data-method="upi" aria-selected="true">UPI</button><button type="button" role="tab" data-method="card" aria-selected="false">Card</button></div>
+            <div id="payUpi" class="pay-grid">
+              <div class="upi-box wide"><canvas class="upi-qr" id="upiQr" width="120" height="120" aria-label="Demo UPI QR code"></canvas><div><div style="font-size:12px;opacity:.6">Pay to (demo)</div><div style="font-weight:600">alkemy2027@demo</div><div style="font-size:12px;opacity:.6;margin-top:6px">Amount</div><div style="font-weight:600" id="upiAmt">₹599</div></div></div>
+              <div class="field"><label for="p-vpa">Your UPI ID</label><input id="p-vpa" placeholder="name@bank" autocomplete="off"><small class="err" id="e-vpa"></small></div>
+              <div class="field"><label for="p-utr">UPI reference (UTR) <span style="opacity:.6">optional</span></label><input id="p-utr" inputmode="numeric" maxlength="12" placeholder="12 digits"><small class="err" id="e-utr"></small></div>
+              <div class="field wide"><label for="p-shot">Payment screenshot <span style="opacity:.6">optional</span></label><input id="p-shot" type="file" accept="image/png,image/jpeg,image/webp"><small class="err" id="e-shot"></small><img class="shot-preview" id="shotPreview" alt="Payment screenshot preview" hidden></div>
+            </div>
+            <div id="payCard" class="pay-grid" hidden>
+              <div class="field wide"><label for="p-cnum">Card number</label><input id="p-cnum" inputmode="numeric" maxlength="19" autocomplete="off" placeholder="4111 1111 1111 1111"><small class="err" id="e-cnum"></small></div>
+              <div class="field"><label for="p-cexp">Expiry (MM/YY)</label><input id="p-cexp" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="MM/YY"><small class="err" id="e-cexp"></small></div>
+              <div class="field"><label for="p-ccvv">CVV</label><input id="p-ccvv" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="123"><small class="err" id="e-ccvv"></small></div>
+              <div class="field wide"><label for="p-cname">Name on card</label><input id="p-cname" autocomplete="off"><small class="err" id="e-cname"></small></div>
+            </div>
+          </div>
+          <div class="row-actions"><button type="button" class="btn" id="payBack">← Back to summary</button><button type="button" class="btn pop" id="payBtn">Pay ₹599 (demo)</button></div>
+        </div>
+      </div>
+      <aside class="co-side" aria-label="Your jersey">
+        <div class="stage" id="coStage" data-pad="14 62" role="img" aria-label="Live 3D preview of your customised jersey">
+          <div class="stage-ctrl"><div class="seg" role="group" aria-label="Jersey side"><button type="button" data-side="front" aria-pressed="true">Front</button><button type="button" data-side="back" aria-pressed="false">Back</button></div></div>
+        </div>
+        <div class="thumbs" id="coThumbs"><figure><canvas data-snap="front"></canvas><figcaption>Front</figcaption></figure><figure><canvas data-snap="back"></canvas><figcaption>Back</figcaption></figure></div>
+        <dl class="summary" id="coSel"></dl>
+        <div class="price-break" id="coPrice"></div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ CONFIRMATION  #/order/<id> ═══════════ -->
+<section class="view" id="viewOrder" hidden aria-labelledby="okTitle">
+  <div class="ok" id="okBody"></div>
+</section>
+<dialog id="rcptDialog" aria-labelledby="rcptTitle">
+  <div class="rcpt-bar"><h2 id="rcptTitle">Receipt</h2><div style="display:flex;gap:8px"><button type="button" class="btn primary" id="rcptDl">Download PDF</button><button type="button" class="btn" id="rcptClose" aria-label="Close receipt">Close</button></div></div>
+  <div class="rcpt-body"><canvas id="rcptBig" aria-label="Payment receipt"></canvas></div>
+</dialog>
+<footer><span>RallyKit · ALKEMY 2027 — Department Jersey Collection</span><span>Pick your department. Rep your jersey.</span></footer>
+
+<div id="fitOver" aria-live="polite">
+  <div class="fit-copy">
+    <div class="fit-label" id="fitLabel">Step 01 / 04 · Fabric &amp; Fit</div>
+    <h2 class="fit-head" id="fitHead"><span>BUILT FOR<br>THE FEST</span></h2>
+    <p class="fit-cap" id="fitCap"><span>Breathable mesh. All-day comfort.</span></p>
+    <div class="fit-ticks" id="fitTicks"><i class="on"></i><i></i><i></i><i></i></div>
+  </div>
+</div>
+<div class="storm" id="stormUnder" aria-hidden="true"></div>
+<div class="storm" id="stormOver" aria-hidden="true"></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { DEPARTMENTS, YEARS, SIZES, LIMITS, cleanPrintName, cleanNumber, digits, validateOrder, maskAadhaar, isUtr } from './shared/validate.js';
+
+/* ════════════════════════════════════════════════════════════════════
+   DATA — loop over DESIGNS everywhere; adding a branch = one file + one row.
+   panel: colour for recoloured back panels / trim / back print (default white).
+   ════════════════════════════════════════════════════════════════════ */
+const DESIGNS = [
+  { id: 0, branch: "CSE",  color: "#1a2740", front: "assets/jerseys/01-cse-front.png",  back: null },
+  { id: 1, branch: "IT",   color: "#5a1420", front: "assets/jerseys/02-it-front.png",   back: null, panel: "#d8b878" },
+  { id: 2, branch: "CSBS", color: "#111111", front: "assets/jerseys/03-csbs-front.png", back: null },
+  { id: 3, branch: "AIML", color: "#f2f2f2", front: "assets/jerseys/04-aiml-front.png", back: null, panel: "#1b2a4a" },
+  { id: 4, branch: "ExTc", color: "#43492e", front: "assets/jerseys/05-extc-front.png", back: "assets/jerseys/05-extc-back.png" },
+];
+const N = DESIGNS.length;
+const JERSEY_ASPECT = 0.9;            // wrapper / plane / card-slot aspect (w/h)
+// Cut tuning. The backdrops are not pure black (spotlit to ~30, vignetted to ~5) and navy/black fabric folds go
+// *darker* than the backdrop, so "jersey" = differs from a fitted backdrop model in luminance (either way) or saturation.
+const CUT = { threshold: 20, lumDelta: 7, satDelta: 8, band: .3, padding: 0.04, workMax: 1200, closeFrac: 0.005, openFrac: 0.006, hookFrac: 0.08, bleedPasses: 6 };
+const SHOW_BACK_NUMBER = true;        // placeholder back print (branch + 01–05) — confirm later
+const PRICE = 599;                    // placeholder ₹ per jersey — confirm later
+const SQUAD_DISCOUNT = 0.10;          // placeholder squad discount — confirm later
+const KIT_SLOTS = { min: 3, max: 5, initial: 4 };  // teammates per squad order — confirm later
+// SIZES (XS–XXL), departments, years and order validation come from shared/validate.js
+const AUTOPLAY_MS = 3200;
+const HALF_TURN_MS = 720;
+// Real 3D jersey: loaded once, cloned per branch. The photos are projected onto it front-on (planar UVs), so any
+// jersey GLB works regardless of its own UV layout / material slots. If it's missing -> flat photo cards.
+// `?glb=path/to/model.glb` overrides the URL, handy for trying candidate models.
+// Artwork layout of assets/jersey.glb (extc.glb), as fractions of its front/back textures. The ExTc-specific
+// text is erased from the front and redrawn per branch in the branch accent ('panel') colour.
+const ART = {
+  erase: [ { x0: .392, x1: .608, y0: .480, y1: .555 },    // "EXTC" chest name
+           { x0: .585, x1: .676, y0: .190, y1: .280 },    // round badge
+           { x0: .324, x1: .413, y0: .226, y1: .243 },    // "JERSEY HQ" wordmark
+           { x0: .405, x1: .595, y0: .574, y1: .598 } ],  // "CAMPUS LEAGUE 2026" → replaced by ALKEMY 2027
+  name: { cx: .5, top: .485, capH: .065, maxW: .24 },
+  badge: { cx: .6309, cy: .2377, r: .0343 },
+  wordmark: { x: .328, top: .2309, capH: .0078 },
+  event: { text: 'ALKEMY 2027', font: '700 Arial, Helvetica, sans-serif', cx: .5, top: .578, capH: .0125, maxW: .2 },
+  back: { cx: .5, nameTop: .135, nameCapH: .036, nameMaxW: .36, numTop: .195, numCapH: .19, maxW: .4 },
+};
+const GLB = {
+  url: new URLSearchParams(location.search).get('glb') || 'assets/jersey.glb',
+  texture: 'art',     // 'art' = recolour the model's own artwork per branch; 'photo' = project the photos onto it
+  rotateY: 0,         // radians - set if the model's chest doesn't face +Z (the glTF convention)
+  meshFilter: null,   // e.g. /shirt|jersey|top/i to drop shorts / mannequin parts from a multi-part file
+};
+const STEPS = [
+  { head: ['BUILT FOR', 'ALKEMY 2027'], cap: () => 'Breathable mesh. All-day comfort.', angle: 0 },
+  { head: ['YOUR NAME,', 'YOUR NUMBER'], cap: () => 'Back print available on request.', angle: Math.PI },
+  { head: ['BRANCH COLOURS', 'LOCKED IN'], cap: () => 'Fade-resistant sublimation print.', angle: Math.PI * 2 },
+  { head: d => [d.branch.toUpperCase()], cap: d => `Rep ${d.branch} at ALKEMY 2027.`, angle: Math.PI * 4 },
+];
+const ICONS = {
+  star: '<path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z"/>',
+  trophy: '<path fill-rule="evenodd" d="M7 3h10v2h3v3a4 4 0 0 1-4 4h-.4A5 5 0 0 1 13 14.9V18h3v3H8v-3h3v-3.1A5 5 0 0 1 8.4 12H8a4 4 0 0 1-4-4V5h3zM6 7v1a2 2 0 0 0 1 1.7V7zm12 0v2.7A2 2 0 0 0 18 8V7z"/>',
+  whistle: '<path fill-rule="evenodd" d="M3 12.5a5.5 5.5 0 0 1 5.5-5.5H21v5h-7.1A5.5 5.5 0 0 1 3 12.5zm5.5-2.3a2.3 2.3 0 1 0 0 4.6 2.3 2.3 0 0 0 0-4.6zM14 4h3v3h-3z"/>',
+  confetti: '<path d="M4 19c3-2 2-6 5-8s5 1 7-1 1-5 4-6" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>',
+  bolt: '<path d="M13 2L4 14h6l-1 8 9-12h-6z"/>',
+  chip: '<rect x="7" y="3" width="10" height="18" rx="2"/>',
+};
+const icon = k => `<svg viewBox="0 0 24 24" fill="currentColor">${ICONS[k]}</svg>`;
+
+/* ════════════════ helpers ════════════════ */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0)); return t * t * (3 - 2 * t); };
+const easeIO = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeSine = t => -(Math.cos(Math.PI * t) - 1) / 2;
+const easeOut3 = t => 1 - Math.pow(1 - t, 3);
+const mod = (n, m) => ((n % m) + m) % m;
+const pad2 = n => String(n).padStart(2, '0');
+const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const lumOf = hex => { const [r, g, b] = hexRgb(hex).map(v => { v /= 255; return v <= .04045 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * r + .7152 * g + .0722 * b; };
+const onColor = hex => lumOf(hex) > .4 ? '#141414' : '#f3eee4';
+const rupee = n => '₹' + Math.round(n).toLocaleString('en-IN');
+const mulberry32 = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const makeCanvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isPhone = () => innerWidth < 820;
+document.documentElement.style.setProperty('--n', N);
+document.documentElement.style.setProperty('--ja', JERSEY_ASPECT);
+
+/* ════════════════════════════════════════════════════════════════════
+   §1  PHOTO → TEXTURE PIPELINE
+   ════════════════════════════════════════════════════════════════════ */
+function loadImage(src) {
+  return new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = () => rej(new Error(`Could not load ${src}`));
+    im.src = src;
+  });
+}
+// separable box min/max on a binary mask (prefix sums → O(n) per pass)
+function boxPass(src, w, h, r, dil, horiz) {
+  const out = new Uint8Array(w * h), n = horiz ? w : h, lines = horiz ? h : w, pre = new Int32Array(n + 1), full = 2 * r + 1;
+  for (let l = 0; l < lines; l++) {
+    for (let i = 0; i < n; i++) pre[i + 1] = pre[i] + src[horiz ? l * w + i : i * w + l];
+    for (let i = 0; i < n; i++) {
+      const s = pre[Math.min(n - 1, i + r) + 1] - pre[Math.max(0, i - r)];
+      out[horiz ? l * w + i : i * w + l] = dil ? (s > 0 ? 1 : 0) : (s === full ? 1 : 0);
+    }
+  }
+  return out;
+}
+const dilate = (m, w, h, r) => boxPass(boxPass(m, w, h, r, true, true), w, h, r, true, false);
+const erode = (m, w, h, r) => boxPass(boxPass(m, w, h, r, false, true), w, h, r, false, false);
+// background = below-threshold pixels connected to the image border; everything else is jersey
+// (keeps dark folds on navy/black jerseys that are darker than the backdrop)
+function borderFlood(pass, w, h) {           // pixels reachable from the image border through `pass`
+  const bg = new Uint8Array(w * h), stack = new Int32Array(w * h); let sp = 0;
+  const push = i => { if (pass[i] && !bg[i]) { bg[i] = 1; stack[sp++] = i; } };
+  for (let x = 0; x < w; x++) { push(x); push((h - 1) * w + x); }
+  for (let y = 0; y < h; y++) { push(y * w); push(y * w + w - 1); }
+  while (sp) { const i = stack[--sp], x = i % w; if (x > 0) push(i - 1); if (x < w - 1) push(i + 1); if (i >= w) push(i - w); if (i < w * (h - 1)) push(i + w); }
+  return bg;
+}
+function fillHoles(m, w, h) {
+  const inv = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) inv[i] = m[i] ? 0 : 1;
+  const bg = borderFlood(inv, w, h), out = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) out[i] = bg[i] ? 0 : 1; return out;
+}
+// Smooth backdrop model: quadratic luminance surface fitted (with outlier rejection) to the dark, neutral,
+// border-connected pixels, plus the backdrop's median saturation.
+function fitBackdrop(L, S, w, h) {
+  const n = w * h, cand = new Uint8Array(n);
+  for (let i = 0; i < n; i++) cand[i] = S[i] < 14 && L[i] < 48 ? 1 : 0;
+  const bg = borderFlood(cand, w, h), step = Math.max(1, Math.round(Math.sqrt(n / 40000)));
+  const terms = (u, v) => [1, u, v, u * u, v * v, u * v];
+  let coef = [CUT.threshold * .6, 0, 0, 0, 0, 0];
+  const evalAt = (u, v) => terms(u, v).reduce((s, t, k) => s + t * coef[k], 0);
+  for (let it = 0; it < 3; it++) {
+    const A = Array.from({ length: 6 }, () => new Float64Array(7));
+    for (let y = 0; y < h; y += step) for (let x = 0; x < w; x += step) {
+      const i = y * w + x; if (!bg[i]) continue;
+      const u = x / w - .5, v = y / h - .5;
+      if (it && Math.abs(L[i] - evalAt(u, v)) > 6) continue;
+      const t = terms(u, v);
+      for (let r = 0; r < 6; r++) { for (let c = 0; c < 6; c++) A[r][c] += t[r] * t[c]; A[r][6] += t[r] * L[i]; }
+    }
+    for (let c = 0; c < 6; c++) {                                    // Gauss–Jordan
+      let piv = c; for (let r = c + 1; r < 6; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+      [A[c], A[piv]] = [A[piv], A[c]]; const d = A[c][c] || 1e-9;
+      for (let k = c; k < 7; k++) A[c][k] /= d;
+      for (let r = 0; r < 6; r++) if (r !== c) { const f = A[r][c]; for (let k = c; k < 7; k++) A[r][k] -= f * A[c][k]; }
+    }
+    coef = A.map(r => r[6]);
+  }
+  const hist = new Uint32Array(256); let cnt = 0;
+  for (let i = 0; i < n; i += step) if (bg[i]) { hist[Math.min(255, S[i])]++; cnt++; }
+  let acc = 0, satBg = 6; for (let k = 0; k < 256; k++) { acc += hist[k]; if (acc >= cnt / 2) { satBg = k; break; } }
+  const Lbg = new Float32Array(n);
+  for (let y = 0; y < h; y++) { const v = y / h - .5; for (let x = 0; x < w; x++) Lbg[y * w + x] = evalAt(x / w - .5, v); }
+  return { Lbg, satBg };
+}
+function largestComponent(m, w, h) {
+  const lab = new Int32Array(w * h), stack = new Int32Array(w * h); let best = 0, bestN = 0, cur = 0;
+  for (let s = 0; s < w * h; s++) {
+    if (!m[s] || lab[s]) continue;
+    cur++; let sp = 0, cnt = 0; stack[sp++] = s; lab[s] = cur;
+    while (sp) {
+      const i = stack[--sp], x = i % w; cnt++;
+      const nb = [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w];
+      for (const j of nb) if (j >= 0 && j < w * h && m[j] && !lab[j]) { lab[j] = cur; stack[sp++] = j; }
+    }
+    if (cnt > bestN) { bestN = cnt; best = cur; }
+  }
+  const out = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) out[i] = lab[i] === best ? 1 : 0; return out;
+}
+// push solid jersey colour outward so edges & mip levels never pick up the black backdrop (no halo)
+function bleed(px, known0, w, h, passes) {
+  const out = new Uint8ClampedArray(px); let known = new Uint8Array(known0);
+  for (let p = 0; p < passes; p++) {
+    const next = new Uint8Array(known);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x; if (known[i]) continue;
+      let r = 0, g = 0, b = 0, c = 0;
+      const add = j => { const k = j * 4; r += out[k]; g += out[k + 1]; b += out[k + 2]; c++; };
+      if (x > 0 && known[i - 1]) add(i - 1); if (x < w - 1 && known[i + 1]) add(i + 1);
+      if (y > 0 && known[i - w]) add(i - w); if (y < h - 1 && known[i + w]) add(i + w);
+      if (c) { const k = i * 4; out[k] = r / c; out[k + 1] = g / c; out[k + 2] = b / c; next[i] = 1; }
+    }
+    known = next;
+  }
+  return out;
+}
+let TEX_H = 1024;
+
+/** Steps 1–3: alpha-cut from black, auto-crop (+4% pad), contain-fit into a JERSEY_ASPECT frame.
+ *  Returns a "frame": { w, h, rgba (straight alpha, top-down), content:{x,y,w,h} } */
+async function cutToFrame(path) {
+  const img = await loadImage(path);
+  const sc = Math.min(1, CUT.workMax / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.round(img.naturalWidth * sc), h = Math.round(img.naturalHeight * sc), n = w * h;
+  const src = makeCanvas(w, h), sctx = src.getContext('2d', { willReadFrequently: true });
+  sctx.drawImage(img, 0, 0, w, h);
+  const px = sctx.getImageData(0, 0, w, h).data;              // SecurityError on file:// → caught by caller
+  const L = new Float32Array(n), S = new Uint8Array(n), score = new Float32Array(n), hard = new Uint8Array(n);
+  for (let i = 0, j = 0; i < n; i++, j += 4) {
+    const r = px[j], g = px[j + 1], b = px[j + 2];
+    L[i] = .299 * r + .587 * g + .114 * b; S[i] = Math.max(r, g, b) - Math.min(r, g, b);
+  }
+  const { Lbg, satBg } = fitBackdrop(L, S, w, h);
+  for (let i = 0; i < n; i++) {
+    const dL = L[i] - Lbg[i];   // darker-than-backdrop = shadowed fabric; brighter + neutral is often just spotlight
+    score[i] = Math.max(dL < 0 ? -dL / CUT.lumDelta : dL / (CUT.lumDelta * 2.2), (S[i] - satBg) / CUT.satDelta, (L[i] - CUT.threshold * 2.5) / CUT.lumDelta);
+    hard[i] = score[i] > 1 ? 1 : 0;
+  }
+  const rc = Math.max(2, Math.round(w * CUT.closeFrac)), ro = Math.max(2, Math.round(w * CUT.openFrac));
+  let mask = erode(dilate(hard, w, h, rc), w, h, rc);          // close: bridge dark seams along the outline
+  mask = fillHoles(mask, w, h);                                 // keep enclosed dark folds
+  mask = dilate(erode(mask, w, h, ro), w, h, ro);               // open: drop thin hanger wire
+  mask = largestComponent(mask, w, h);                          // drop stray specks
+  { // trim hanger hook: top rows narrower than hookFrac of the jersey's widest row
+    const rows = new Int32Array(h); let maxRow = 0;
+    for (let i = 0; i < n; i++) if (mask[i]) rows[(i / w) | 0]++;
+    for (let y = 0; y < h; y++) maxRow = Math.max(maxRow, rows[y]);
+    for (let y = 0; y < h && rows[y] < maxRow * CUT.hookFrac; y++) mask.fill(0, y * w, y * w + w);
+  }
+  const inner = erode(mask, w, h, 2);
+  const alpha = new Uint8Array(n), t0 = 1 - CUT.band, t1 = 1 + CUT.band;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let i = 0; i < n; i++) {
+    if (!mask[i]) continue;
+    const a = inner[i] ? 255 : Math.round(smooth(t0, t1, score[i]) * 255);
+    alpha[i] = a;
+    if (a > 8) { const x = i % w, y = (i / w) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  }
+  const rgb = bleed(px, inner, w, h, CUT.bleedPasses);
+  // two opaque canvases (rgb + alpha-as-grey) so resampling never premultiplies colour away
+  const cRGB = makeCanvas(w, h), cA = makeCanvas(w, h);
+  const iR = new ImageData(w, h), iA = new ImageData(w, h);
+  for (let i = 0, j = 0; i < n; i++, j += 4) {
+    const keep = inner[i] ? px : rgb;
+    iR.data[j] = keep[j]; iR.data[j + 1] = keep[j + 1]; iR.data[j + 2] = keep[j + 2]; iR.data[j + 3] = 255;
+    iA.data[j] = iA.data[j + 1] = iA.data[j + 2] = alpha[i]; iA.data[j + 3] = 255;
+  }
+  cRGB.getContext('2d').putImageData(iR, 0, 0); cA.getContext('2d').putImageData(iA, 0, 0);
+  // auto-crop to content bbox, padded ~4% each side
+  const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+  const cx = x0 - bw * CUT.padding, cy = y0 - bh * CUT.padding, cw = bw * (1 + 2 * CUT.padding), ch = bh * (1 + 2 * CUT.padding);
+  const TH = TEX_H, TW = Math.round(TH * JERSEY_ASPECT);
+  let dw, dh; if (cw / ch > JERSEY_ASPECT) { dw = TW; dh = TW * ch / cw; } else { dh = TH; dw = TH * cw / ch; }
+  const dx = (TW - dw) / 2, dy = (TH - dh) / 2, s = dw / cw;
+  const draw = srcC => {
+    const c = makeCanvas(TW, TH), x = c.getContext('2d', { willReadFrequently: true });
+    x.fillStyle = '#000'; x.fillRect(0, 0, TW, TH); x.imageSmoothingQuality = 'high';
+    // draw in canvas space (avoids src-rect-out-of-bounds edge cases)
+    x.setTransform(s, 0, 0, s, dx - cx * s, dy - cy * s); x.drawImage(srcC, 0, 0);
+    return x.getImageData(0, 0, TW, TH).data;
+  };
+  const fr = draw(cRGB), fa = draw(cA), rgba = new Uint8ClampedArray(TW * TH * 4);
+  for (let j = 0; j < rgba.length; j += 4) { rgba[j] = fr[j]; rgba[j + 1] = fr[j + 1]; rgba[j + 2] = fr[j + 2]; rgba[j + 3] = fa[j]; }
+  const content = { x: dx + (x0 - cx) * s, y: dy + (y0 - cy) * s, w: bw * s, h: bh * s };
+  return { w: TW, h: TH, rgba, content };
+}
+let maxAniso = 1;
+// `.texture` (alpha-cut, for flat cards) is only built if something asks for it - the GLB path uses modelTexture()
+function lazyTexture(o) { let t; return Object.defineProperty(o, 'texture', { get: () => t ??= (GL_OK ? frameToTexture(o.frame) : null) }); }
+function frameToTexture(f) {
+  const { w, h, rgba } = f, flipped = new Uint8Array(w * h * 4), row = w * 4;
+  for (let y = 0; y < h; y++) flipped.set(rgba.subarray(y * row, (y + 1) * row), (h - 1 - y) * row);
+  const t = new THREE.DataTexture(flipped, w, h, THREE.RGBAFormat);
+  t.colorSpace = THREE.SRGBColorSpace; t.generateMipmaps = true;
+  t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.anisotropy = maxAniso;
+  t.needsUpdate = true; return t;
+}
+// Opaque version for the 3D model: photo composited over the branch colour (wherever the photo's silhouette
+// doesn't cover the model it reads as plain fabric - never a hole), with offset/repeat mapping the model's 0-1
+// planar UVs onto the photo's jersey bounding box.
+function modelTexture(f, hex) {
+  const base = hexRgb(hex), out = new Uint8ClampedArray(f.rgba.length);
+  for (let j = 0; j < out.length; j += 4) {
+    const a = f.rgba[j + 3] / 255;
+    out[j] = lerp(base[0], f.rgba[j], a); out[j + 1] = lerp(base[1], f.rgba[j + 1], a); out[j + 2] = lerp(base[2], f.rgba[j + 2], a); out[j + 3] = 255;
+  }
+  const t = frameToTexture({ ...f, rgba: out }), c = f.content;
+  t.repeat.set(c.w / f.w, c.h / f.h); t.offset.set(c.x / f.w, 1 - (c.y + c.h) / f.h);
+  return t;
+}
+function frameToSprite(f) {
+  const c = makeCanvas(f.w, f.h); c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(f.rgba), f.w, f.h), 0, 0); return c;
+}
+/** The one reusable entry point: photo path → { texture, aspect } (+ frame & 2D sprite for cards). */
+async function loadAndCutJersey(path) {
+  const frame = await cutToFrame(path);
+  return lazyTexture({ aspect: JERSEY_ASPECT, frame, sprite: frameToSprite(frame) });
+}
+
+/* ── back template: recolour ExTc's real back per branch ── */
+const frameLum = (f, i) => .299 * f.rgba[i * 4] + .587 * f.rgba[i * 4 + 1] + .114 * f.rgba[i * 4 + 2];
+function baseLumRef(f) {                    // median luminance of the base (non-panel) fabric
+  const hist = new Uint32Array(256); let cnt = 0;
+  for (let i = 0; i < f.w * f.h; i++) if (f.rgba[i * 4 + 3] > 200) { const l = frameLum(f, i) | 0; if (l < 95) { hist[l]++; cnt++; } }
+  let acc = 0; for (let l = 0; l < 256; l++) { acc += hist[l]; if (acc >= cnt / 2) return Math.max(12, l); } return 50;
+}
+function recolorBack(tpl, d) {
+  const out = new Uint8ClampedArray(tpl.rgba), base = hexRgb(d.color), panel = hexRgb(d.panel || '#ffffff'), Lref = tpl.Lref;
+  for (let i = 0, j = 0; i < tpl.w * tpl.h; i++, j += 4) {
+    const L = frameLum(tpl, i), tP = smooth(95, 165, L);
+    const sb = clamp(L / Lref, .25, 1.7), sp = clamp(L / 215, .45, 1.08);
+    for (let c = 0; c < 3; c++) out[j + c] = lerp(base[c] * sb, panel[c] * sp, tP);
+  }
+  return { ...tpl, rgba: out };
+}
+function addBackPrint(f, shadeSrc, d, idx) {
+  const { w, h, content } = f, Lref = shadeSrc.Lref;
+  // torso centre from the opaque span at 62% of jersey height (below the sleeves)
+  const ry = Math.round(content.y + content.h * .62); let a = -1, b = -1;
+  for (let x = 0; x < w; x++) if (f.rgba[(ry * w + x) * 4 + 3] > 128) { if (a < 0) a = x; b = x; }
+  const cx = a >= 0 ? (a + b) / 2 : w / 2;
+  const c = makeCanvas(w, h), x = c.getContext('2d', { willReadFrequently: true });
+  x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+  const fit = (txt, capH, top) => {
+    x.font = `100px Anton, Impact, sans-serif`; const m = x.measureText(txt); const asc = m.actualBoundingBoxAscent || 72;
+    const size = 100 * capH / asc; x.font = `${size}px Anton, Impact, sans-serif`; x.fillText(txt, cx, top + capH);
+  };
+  fit(d.branch.toUpperCase(), content.h * .045, content.y + content.h * .2);
+  fit(pad2(idx + 1), content.h * .25, content.y + content.h * .28);
+  const ta = x.getImageData(0, 0, w, h).data, out = f.rgba, col = hexRgb(d.panel || '#ffffff');
+  for (let i = 0, j = 0; i < w * h; i++, j += 4) {
+    const na = ta[j + 3] / 255; if (!na || out[j + 3] < 10) continue;
+    const s = clamp(frameLum(shadeSrc, i) / Lref, .55, 1.25) * .95;
+    for (let k = 0; k < 3; k++) out[j + k] = lerp(out[j + k], col[k] * s, na);
+  }
+}
+async function buildBacks(fronts) {
+  const tplDesign = DESIGNS.find(d => d.back);
+  const tpl = await cutToFrame(tplDesign.back); tpl.Lref = baseLumRef(tpl);
+  try { await document.fonts.load('100px Anton'); } catch {}
+  return Promise.all(DESIGNS.map(async (d, i) => {
+    let f;
+    if (d.back === tplDesign.back) f = { ...tpl, rgba: new Uint8ClampedArray(tpl.rgba) };
+    else if (d.back) { f = await cutToFrame(d.back); f.Lref = baseLumRef(f); }
+    else f = recolorBack(tpl, d);
+    if (SHOW_BACK_NUMBER) addBackPrint(f, d.back && d.back !== tplDesign.back ? f : tpl, d, i);
+    return lazyTexture({ frame: f, sprite: frameToSprite(f) });
+  }));
+}
+function shadowCanvas(sprite) {
+  const w = 256, h = Math.round(256 / JERSEY_ASPECT), c = makeCanvas(w, h), x = c.getContext('2d'), p = 22;
+  x.filter = 'blur(10px)'; x.drawImage(sprite, p, p, w - 2 * p, h - 2 * p); x.filter = 'none';
+  x.globalCompositeOperation = 'source-in'; x.fillStyle = '#000'; x.fillRect(0, 0, w, h);
+  return c;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   §4  THREE — renderer, lighting, shared jersey geometry
+   ════════════════════════════════════════════════════════════════════ */
+const glCanvas = $('#gl');
+let renderer, scene, camera, GL_OK = true;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.NoToneMapping;
+  renderer.setClearColor(0x000000, 0);
+  maxAniso = renderer.capabilities.getMaxAnisotropy();
+  scene = new THREE.Scene();
+  const pm = new THREE.PMREMGenerator(renderer);
+  scene.environment = pm.fromScene(new RoomEnvironment(), .04).texture;
+  scene.add(new THREE.AmbientLight(0xffffff, .55));
+  const key = new THREE.DirectionalLight(0xffffff, 1.9); key.position.set(-.45, .7, 1); scene.add(key);
+  camera = new THREE.PerspectiveCamera(30, 1, 10, 20000);
+} catch (e) {
+  GL_OK = false; document.body.classList.add('no-gl'); console.warn('WebGL unavailable — flat fallback', e);
+}
+if (!GL_OK) TEX_H = 768;
+else if (isPhone()) TEX_H = 768;
+
+let VW = innerWidth, VH = innerHeight, U = 1;
+function resize() {
+  VW = innerWidth; VH = innerHeight;
+  U = isPhone() ? VW / 390 : Math.min(VW / 1440, VH / 900);
+  if (!GL_OK) return;
+  renderer.setSize(VW, VH, false);
+  camera.aspect = VW / VH; camera.fov = 30;
+  camera.position.set(0, 0, (VH / 2) / Math.tan(THREE.MathUtils.degToRad(15)));   // 1 world unit = 1 CSS px at z=0
+  camera.near = 10; camera.far = camera.position.z * 4; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+/* ── Real model ────────────────────────────────────────────────────────────────────────────────────────────
+   Loaded once → normalised into a pivot (height 1, fits the JERSEY_ASPECT box, centred) → cloned per branch
+   (clones share geometry). Two texturing modes:
+   · 'art'   — recolour the model's own artwork per branch (extc.glb: camo body, trim, name, badge, wordmark)
+   · 'photo' — project the alpha-cut photos front-on (for any GLB without usable artwork)            */
+async function loadJerseyModel() {
+  const loader = new GLTFLoader(), draco = new DRACOLoader();
+  draco.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/gltf/');
+  loader.setDRACOLoader(draco); loader.setMeshoptDecoder(MeshoptDecoder);
+  let gltf; try { gltf = await loader.loadAsync(GLB.url); } finally { draco.dispose(); }
+  const root = gltf.scene; root.rotation.y += GLB.rotateY;
+  const meshes = []; root.traverse(o => {
+    if (o.isMesh && o.visible && o.geometry?.attributes.position &&
+      (!GLB.meshFilter || GLB.meshFilter.test(o.name) || GLB.meshFilter.test(o.parent?.name || ''))) meshes.push(o);
+  });
+  if (!meshes.length) throw new Error(`no usable meshes in ${GLB.url}`);
+  const hasArt = meshes.every(m => m.material?.map?.image);
+  return GLB.texture === 'art' && hasArt ? prepareArtModel(root, meshes) : preparePhotoModel(root, meshes);
+}
+
+function prepareArtModel(root, meshes) {
+  root.traverse(o => { if (o.isMesh && !meshes.includes(o)) o.visible = false; });
+  const pivot = new THREE.Group(); pivot.add(root); root.updateMatrixWorld(true);
+  const box = new THREE.Box3(); meshes.forEach(m => box.expandByObject(m));
+  const size = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
+  root.position.sub(mid); pivot.scale.setScalar(Math.min(1 / size.y, JERSEY_ASPECT / size.x));
+  const role = m => /back/i.test(m.name) ? 'back' : /collar|trim|rib|cuff/i.test(m.name) ? 'trim' : 'front';
+  const parts = meshes.map(m => ({ name: m.name, role: role(m), template: artTemplate(m.material.map, role(m)) }));
+  const k = pivot.scale.x;
+  return {
+    kind: 'art', depth: size.z * k,
+    make(d, idx) {                                         // one clone per branch, materials painted for it
+      const c = pivot.clone(), maps = new Map(); let setPrint = null;
+      for (const p of parts) { const r = paintArt(p, d, idx); maps.set(p.name, r.tex); if (r.setPrint) setPrint = r.setPrint; }
+      c.traverse(o => { if (o.isMesh && maps.has(o.name)) o.material = fabric(maps.get(o.name), true, !!o.geometry.attributes.color, d.color); });
+      c.userData.setPrint = setPrint;                       // live name/number on the back
+      return c;
+    },
+  };
+}
+// Downscale the model's texture once, erase the ExTc-specific text from the front, remember its base colour.
+function artTemplate(map, role) {
+  const img = map.image, s = Math.min(1, (isPhone() ? 768 : 1024) / Math.max(img.width, img.height));
+  const w = Math.max(4, Math.round(img.width * s)), h = Math.max(4, Math.round(img.height * s));
+  const c = makeCanvas(w, h), x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(img, 0, 0, w, h);
+  const id = x.getImageData(0, 0, w, h), p = id.data;
+  if (role === 'front') for (const b of ART.erase) {
+    const x0 = Math.floor(b.x0 * w), x1 = Math.ceil(b.x1 * w), y0 = Math.floor(b.y0 * h), y1 = Math.ceil(b.y1 * h);
+    const txt = new Uint8Array(w * h);
+    for (let y = y0; y < y1; y++) for (let xx = x0; xx < x1; xx++) { const j = (y * w + xx) * 4; if (.299 * p[j] + .587 * p[j + 1] + .114 * p[j + 2] > 150) txt[y * w + xx] = 1; }
+    const grown = dilate(txt, w, h, Math.max(2, Math.round(w * .002)));
+    // inpaint: diffuse the surrounding camo inward (blends far better than copying patches)
+    const known = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) known[i] = grown[i] ? 0 : 1;
+    const filled = bleed(p, known, w, h, Math.ceil(w * .02));
+    for (let i = 0; i < w * h; i++) if (grown[i]) { const j = i * 4; p[j] = filled[j]; p[j + 1] = filled[j + 1]; p[j + 2] = filled[j + 2]; }
+  }
+  // base colour = most common colour (5-bit buckets)
+  const hist = new Map(); let best = 0, base = [p[0], p[1], p[2]];
+  for (let j = 0; j < p.length; j += 16) { const key = (p[j] >> 3) << 10 | (p[j + 1] >> 3) << 5 | p[j + 2] >> 3, n = (hist.get(key) || 0) + 1; hist.set(key, n); if (n > best) { best = n; base = [p[j], p[j + 1], p[j + 2]]; } }
+  return { w, h, data: id.data, base, Lbase: .299 * base[0] + .587 * base[1] + .114 * base[2], flipY: map.flipY, wrapS: map.wrapS, wrapT: map.wrapT };
+}
+// Text on a texture canvas: cap-height sized, shrunk to fit maxW, optional skew / opacity / letter-spacing (em).
+function drawText(x, str, font, cx, top, capH, maxW, fill, { align = 'center', skew = 0, alpha = 1, spacing = 0 } = {}) {
+  if (!str) return;
+  const [, weight = '', family = font] = font.match(/^(\d{3}|bold|normal)\s+(.+)$/) || [];   // CSS font shorthand: weight before size
+  const f = px => `${weight} ${px}px ${family}`.trim();
+  x.save(); x.font = f(100);
+  const m = x.measureText(str), asc = m.actualBoundingBoxAscent || 72;
+  let size = 100 * capH / asc;
+  const width = (m.width + spacing * 100 * Math.max(0, str.length - 1)) * size / 100;
+  if (maxW && width > maxW) size *= maxW / width;
+  x.font = f(size); if ('letterSpacing' in x) x.letterSpacing = `${spacing * size}px`;
+  x.globalAlpha = alpha; x.fillStyle = fill; x.textAlign = align; x.textBaseline = 'alphabetic';
+  x.translate(cx, top + asc * size / 100); x.transform(1, 0, -skew, 1, 0, 0); x.fillText(str, 0, 0); x.restore();
+}
+// Recolour: base fabric → branch colour (camo kept as a luminance offset), white trim → branch accent; then text.
+// Returns the texture and, for the back, setPrint({name, num, ghostName, ghostNum}) to repaint the print live.
+function paintArt(part, d, idx) {
+  const t = part.template, { w, h } = t, out = new ImageData(w, h), o = out.data, p = t.data;
+  const br = hexRgb(d.color), ac = hexRgb(d.panel || '#ffffff');
+  for (let j = 0; j < p.length; j += 4) {
+    const L = .299 * p[j] + .587 * p[j + 1] + .114 * p[j + 2], S = Math.max(p[j], p[j + 1], p[j + 2]) - Math.min(p[j], p[j + 1], p[j + 2]);
+    const white = smooth(150, 215, L) * (1 - smooth(30, 70, S)), off = L - t.Lbase, sh = clamp(L / 240, .85, 1.05);
+    for (let c = 0; c < 3; c++) o[j + c] = lerp(br[c] + off, ac[c] * sh, white);
+    o[j + 3] = 255;
+  }
+  const base = makeCanvas(w, h), bx = base.getContext('2d'); bx.putImageData(out, 0, 0);
+  const acc = d.panel || '#ffffff', A = ART, TF = 'Anton, Impact, sans-serif';
+  if (part.role === 'front') {
+    drawText(bx, d.branch.toUpperCase(), TF, A.name.cx * w, A.name.top * h, A.name.capH * h, A.name.maxW * w, acc, { skew: .2 });
+    const b = A.badge, r = b.r * w;
+    bx.strokeStyle = acc; bx.lineWidth = Math.max(2, r * .09); bx.beginPath(); bx.arc(b.cx * w, b.cy * h, r * .9, 0, Math.PI * 2); bx.stroke();
+    drawText(bx, d.branch.toUpperCase(), TF, b.cx * w, b.cy * h - r * .22, r * .44, r * 1.3, acc);
+    drawText(bx, 'RALLYKIT', '500 "DM Mono", ui-monospace, monospace', A.wordmark.x * w, A.wordmark.top * h, A.wordmark.capH * h, 0, acc, { align: 'left' });
+    drawText(bx, A.event.text, A.event.font, A.event.cx * w, A.event.top * h, A.event.capH * h, A.event.maxW * w, acc, { spacing: .05 });
+  }
+  const c = makeCanvas(w, h), x = c.getContext('2d'); x.drawImage(base, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = t.flipY; tex.wrapS = t.wrapS; tex.wrapT = t.wrapT; tex.anisotropy = maxAniso;
+  let setPrint = null;
+  if (part.role === 'back') {
+    setPrint = pr => {
+      const B = A.back;
+      x.clearRect(0, 0, w, h); x.drawImage(base, 0, 0);
+      drawText(x, pr.name, TF, B.cx * w, B.nameTop * h, B.nameCapH * h, B.nameMaxW * w, acc, { alpha: pr.ghostName ? .38 : 1, spacing: .06 });
+      drawText(x, pr.num, TF, B.cx * w, B.numTop * h, B.numCapH * h, B.maxW * w, acc, { alpha: pr.ghostNum ? .38 : 1 });
+      tex.needsUpdate = true;
+    };
+    if (SHOW_BACK_NUMBER) setPrint({ name: d.branch.toUpperCase(), num: pad2(idx + 1) });
+  }
+  return { tex, setPrint };
+}
+
+// Photo mode: bake to one geometry with slot 0 = front-facing tris, 1 = back-facing, planar front-view UVs.
+function preparePhotoModel(root, meshes) {
+  root.updateMatrixWorld(true);
+  const P = [], Nn = [], v = new THREE.Vector3();
+  for (const o of meshes) {
+    const g = o.geometry, pos = g.attributes.position, idx = g.index, cnt = idx ? idx.count : pos.count;
+    let nor = g.attributes.normal; if (!nor) { const t = g.clone(); t.computeVertexNormals(); nor = t.attributes.normal; }
+    const nm = new THREE.Matrix3().getNormalMatrix(o.matrixWorld);
+    for (let i = 0; i < cnt; i++) {      // fromBufferAttribute handles interleaved / quantised attributes
+      const j = idx ? idx.getX(i) : i;
+      v.fromBufferAttribute(pos, j).applyMatrix4(o.matrixWorld); P.push(v.x, v.y, v.z);
+      v.fromBufferAttribute(nor, j).applyMatrix3(nm).normalize(); Nn.push(v.x, v.y, v.z);
+    }
+  }
+  const box = new THREE.Box3().setFromArray(P), size = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
+  const k = Math.min(1 / size.y, JERSEY_ASPECT / size.x), W = size.x * k, H = size.y * k;
+  const tris = P.length / 9, front = [], back = [];
+  for (let t = 0; t < tris; t++) (Nn[t * 9 + 2] + Nn[t * 9 + 5] + Nn[t * 9 + 8] >= 0 ? front : back).push(t);
+  const pos = new Float32Array(P.length), nor = new Float32Array(P.length), uv = new Float32Array(tris * 6);
+  let w = 0;
+  for (const [list, mirror] of [[front, false], [back, true]]) for (const t of list) for (let c = 0; c < 3; c++, w++) {
+    const r = (t * 3 + c) * 3, x = (P[r] - mid.x) * k, y = (P[r + 1] - mid.y) * k, z = (P[r + 2] - mid.z) * k;
+    pos[w * 3] = x; pos[w * 3 + 1] = y; pos[w * 3 + 2] = z;
+    nor[w * 3] = Nn[r]; nor[w * 3 + 1] = Nn[r + 1]; nor[w * 3 + 2] = Nn[r + 2];
+    const u = x / W + .5; uv[w * 2] = mirror ? 1 - u : u; uv[w * 2 + 1] = y / H + .5;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  geo.addGroup(0, front.length * 3, 0); geo.addGroup(front.length * 3, back.length * 3, 1);
+  geo.computeBoundingSphere();
+  const template = new THREE.Mesh(geo);
+  return { kind: 'photo', depth: size.z * k,
+    make(d, idx, front, back) { const m = template.clone(); m.material = [fabric(modelTexture(front.frame, d.color), true), fabric(modelTexture(back.frame, d.color), true)]; return m; } };
+}
+// Fallback when the GLB is missing / broken: the flat alpha-cut photo cards (front + back plane)
+function flatCards() {
+  const f = new THREE.PlaneGeometry(JERSEY_ASPECT, 1), b = f.clone();
+  f.translate(0, 0, .002); b.rotateY(Math.PI); b.translate(0, 0, -.002);
+  return { kind: 'flat', depth: .004,
+    make(d, idx, front, back) { const g = new THREE.Group(); g.add(new THREE.Mesh(f, fabric(front.texture)), new THREE.Mesh(b, fabric(back.texture))); return g; } };
+}
+// Athletic-mesh knit as a tiling normal map (staggered pinholes on a soft pique), generated once — no image file.
+let KNIT = null;
+function knitNormalMap() {
+  if (KNIT) return KNIT;
+  const N = 128, cells = 8, hgt = new Float32Array(N * N), c = makeCanvas(N, N), x = c.getContext('2d'), img = x.createImageData(N, N);
+  for (let y = 0; y < N; y++) for (let xx = 0; xx < N; xx++) {
+    const cy = (y / N) * cells, row = Math.floor(cy), cx = (xx / N) * cells + (row % 2) * .5;
+    const dx = cx - Math.floor(cx) - .5, dy = cy - row - .5, r = Math.hypot(dx, dy * 1.15);
+    hgt[y * N + xx] = smooth(.16, .34, r);                                   // pinhole mesh (no ribs → no moiré)
+  }
+  const H = (xx, y) => hgt[mod(y, N) * N + mod(xx, N)];
+  for (let y = 0; y < N; y++) for (let xx = 0; xx < N; xx++) {
+    const nx = (H(xx - 1, y) - H(xx + 1, y)) * 1.6, ny = (H(xx, y - 1) - H(xx, y + 1)) * 1.6, l = Math.hypot(nx, ny, 1), j = (y * N + xx) * 4;
+    img.data[j] = (nx / l * .5 + .5) * 255; img.data[j + 1] = (ny / l * .5 + .5) * 255; img.data[j + 2] = (1 / l * .5 + .5) * 255; img.data[j + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+  KNIT = new THREE.CanvasTexture(c); KNIT.wrapS = KNIT.wrapT = THREE.RepeatWrapping; KNIT.repeat.set(40, 40); KNIT.anisotropy = maxAniso;
+  return KNIT;
+}
+// Fabric material. solid = real 3D garment: knit normal map + sheen, baked fold/seam shading (vertex colours) when
+// the model has it, and a darker inside of the shirt (seen through the neck, hem and cuffs).
+const fabric = (map, solid, baked = false, inner = null) => {
+  const m = new THREE.MeshPhysicalMaterial({ map, roughness: .6, metalness: 0, clearcoat: .15, clearcoatRoughness: .4, envMapIntensity: .35,
+    ...(solid ? { side: THREE.DoubleSide, normalMap: knitNormalMap(), normalScale: new THREE.Vector2(.22, .22),
+      sheen: .35, sheenRoughness: .55, sheenColor: new THREE.Color(0xffffff), vertexColors: baked } : { transparent: true, alphaTest: .5 }) });
+  if (solid) {
+    // inside of the shirt (seen through neck / hem / cuffs): plain fabric in the branch colour, so the print
+    // doesn't show through mirrored; without a branch colour, just a darkened texture
+    const uInner = { value: new THREE.Color(inner || 0x000000) }, tag = inner ? 'inner' : 'dark';
+    m.onBeforeCompile = sh => {
+      sh.uniforms.uInner = uInner;
+      sh.fragmentShader = 'uniform vec3 uInner;\n' + sh.fragmentShader.replace('#include <color_fragment>',
+        '#include <color_fragment>\n\tif (!gl_FrontFacing) diffuseColor.rgb = ' + (inner ? 'uInner * .62;' : 'diffuseColor.rgb * .5;'));
+    };
+    m.customProgramCacheKey = () => 'rallykit-fabric-' + tag;
+  }
+  return m;
+};
+
+// Render a jersey clone to a transparent 2D sprite (cards, builder thumbnails, fly-to-cart) so the flat
+// pictures match the 3D jersey exactly.
+let snap = null;
+function snapshotSprite(obj, rotY = 0) {
+  if (!snap) {
+    const s = new THREE.Scene(); s.environment = scene.environment;
+    s.add(new THREE.AmbientLight(0xffffff, .55)); const k = new THREE.DirectionalLight(0xffffff, 1.9); k.position.set(-.45, .7, 1); s.add(k);
+    const cam = new THREE.OrthographicCamera(-JERSEY_ASPECT / 2, JERSEY_ASPECT / 2, .5, -.5, .01, 10); cam.position.z = 5;
+    const H = 640, W = Math.round(H * JERSEY_ASPECT), rt = new THREE.WebGLRenderTarget(W, H, { samples: 4 });
+    rt.texture.colorSpace = THREE.SRGBColorSpace;
+    snap = { s, cam, rt, W, H, buf: new Uint8Array(W * H * 4) };
+  }
+  const { s, cam, rt, W, H, buf } = snap, o = obj.clone();
+  o.rotation.set(0, rotY, 0); s.add(o);
+  renderer.setRenderTarget(rt); renderer.clear(); renderer.render(s, cam);
+  renderer.readRenderTargetPixels(rt, 0, 0, W, H, buf); renderer.setRenderTarget(null); s.remove(o);
+  const c = makeCanvas(W, H), img = new ImageData(W, H), row = W * 4;
+  for (let y = 0; y < H; y++) {
+    const src = (H - 1 - y) * row, dst = y * row;
+    for (let i = 0; i < row; i += 4) {                         // un-premultiply the MSAA edge against the clear
+      const a = buf[src + i + 3]; if (!a) continue; const f = 255 / a;
+      img.data[dst + i] = Math.min(255, buf[src + i] * f); img.data[dst + i + 1] = Math.min(255, buf[src + i + 1] * f); img.data[dst + i + 2] = Math.min(255, buf[src + i + 2] * f); img.data[dst + i + 3] = a;
+    }
+  }
+  c.getContext('2d').putImageData(img, 0, 0); return c;
+}
+
+class Jersey {
+  constructor(d, idx, front, back, shape, shadowGeo) {
+    this.d = d; this.group = new THREE.Group(); this.spin = new THREE.Group(); this.group.add(this.spin);
+    this.model = shape.make(d, idx, front, back); this.spin.add(this.model);
+    this.shadow = new THREE.Mesh(shadowGeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: .42, depthWrite: false }));
+    this.shadow.position.set(.035, -.04, -(shape.depth / 2 + .1)); this.shadow.renderOrder = -1; this.group.add(this.shadow);
+    if (front) this.setShadow(front.sprite);
+    this.screen = { x: 0, y: 0, w: 0, h: 0 };
+    scene.add(this.group);
+  }
+  /** Repaint the back print on the 3D model; false when this jersey type has no live print (flat fallback). */
+  setPrint(p) { const f = this.model.userData.setPrint; if (!f) return false; f(p); return true; }
+  setShadow(sprite) { this.shadow.material.map = new THREE.CanvasTexture(shadowCanvas(sprite)); this.shadow.material.needsUpdate = true; }
+  place(x, y, z, h, rotY, rotX = 0, rotZ = 0) {
+    this.group.visible = h > 1;
+    this.group.position.set(x - VW / 2, VH / 2 - y, z);
+    this.group.scale.setScalar(Math.max(h, .001));
+    this.spin.rotation.set(rotX, rotY, rotZ);
+    this.shadow.scale.set(.3 + .7 * Math.abs(Math.cos(rotY)), 1, 1);
+    const persp = camera.position.z / (camera.position.z - z);
+    this.screen = { x: VW / 2 + (x - VW / 2) * persp, y: VH / 2 + (y - VH / 2) * persp, w: h * JERSEY_ASPECT * persp, h: h * persp };
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   STATE + DOM BUILD
+   ════════════════════════════════════════════════════════════════════ */
+const state = { sel: 0, carPos: 0, carTarget: 0, autoplay: !REDUCED, apT: 0, cart: [], kitSlots: Array.from({ length: KIT_SLOTS.initial }, () => null), kitActive: 0, step: -1 };
+let assets = null, jerseys = [];
+
+// hero floating bits (procedural icons)
+const BITS = [
+  { x: '6%', y: '62%', k: 'star', s: 34, t: 6 }, { x: '14%', y: '84%', k: 'whistle', s: 42, t: 8 },
+  { x: '30%', y: '12%', k: 'confetti', s: 38, t: 7 }, { x: '41%', y: '88%', k: 'chip', s: 22, t: 6.5 },
+  { x: '58%', y: '9%', k: 'bolt', s: 30, t: 7.5 }, { x: '71%', y: '86%', k: 'trophy', s: 40, t: 9 },
+  { x: '86%', y: '44%', k: 'star', s: 26, t: 6 }, { x: '92%', y: '74%', k: 'confetti', s: 36, t: 8.5 },
+  { x: '48%', y: '24%', k: 'star', s: 18, t: 5.5 }, { x: '22%', y: '42%', k: 'chip', s: 18, t: 7 },
+];
+$('#bits').innerHTML = BITS.map((b, i) => `<span class="bit" style="--x:${b.x};--y:${b.y};--s:${b.s};--t:${b.t}s;--dl:${-i * .7}s;--r:${(i * 37) % 60 - 30}deg">${icon(b.k)}</span>`).join('');
+$('#cntOf').textContent = `/ ${pad2(N)}`;
+$('#intro .word').innerHTML = [...'RALLYKIT'].map((c, i) => `<span style="animation-delay:${i * 55}ms">${c}</span>`).join('');
+
+// shop cards
+const grid = $('#grid');
+grid.innerHTML = DESIGNS.map((d, i) => `
+  <article class="card" data-id="${i}" style="--c:${d.color};--on:${onColor(d.color)};--d:${i * 80}ms">
+    <div class="card-top"><h3>${d.branch}</h3><span class="card-meta"><span class="live-tag">Your pick</span><span class="card-no">No. ${pad2(i + 1)}</span></span></div>
+    <div class="slot"><canvas width="${Math.round(512 * JERSEY_ASPECT)}" height="512" aria-label="${d.branch} jersey"></canvas></div>
+    <div class="sizes" role="radiogroup" aria-label="${d.branch} size">${SIZES.map(s => `<button role="radio" aria-checked="${s === 'M'}" data-size="${s}">${s}</button>`).join('')}</div>
+    <div class="card-foot"><span class="price">${rupee(PRICE)}</span><button class="add">View jersey</button></div>
+  </article>`).join('');
+const cards = $$('.card', grid);
+const cardTilt = DESIGNS.map(() => ({ rx: 0, ry: 0, trx: 0, try: 0 }));
+
+// kit palette
+$('#palette').insertAdjacentHTML('beforeend', DESIGNS.map((d, i) => `
+  <button class="pal" data-id="${i}" style="--c:${d.color}"><canvas width="${Math.round(160 * JERSEY_ASPECT)}" height="160"></canvas><span><b>${d.branch}</b><small>${rupee(PRICE)}</small></span></button>`).join(''));
+
+function drawSprite(canvas, sprite) {
+  const x = canvas.getContext('2d'); x.clearRect(0, 0, canvas.width, canvas.height);
+  x.imageSmoothingQuality = 'high'; x.drawImage(sprite, 0, 0, canvas.width, canvas.height);
+}
+
+/* ════════════════ selection / colour reveal / titles ════════════════ */
+const bgEl = $('#bg');
+function setBranchVars(hex) {
+  const r = document.documentElement.style; r.setProperty('--branch', hex); r.setProperty('--on-branch', onColor(hex));
+}
+function revealColor(hex, ox, oy) {
+  if (REDUCED) { bgEl.style.backgroundColor = hex; setBranchVars(hex); return; }
+  const R = Math.hypot(Math.max(ox, VW - ox), Math.max(oy, VH - oy)) * 1.25;
+  const c = document.createElement('div'); c.className = 'reveal';
+  Object.assign(c.style, { width: `${R * 2}px`, height: `${R * 2}px`, left: `${ox - R}px`, top: `${oy - R}px`,
+    background: `radial-gradient(circle closest-side, ${hex} 0 84%, ${hex}00 100%)` });
+  bgEl.appendChild(c);
+  setTimeout(() => setBranchVars(hex), 120);
+  c.animate([{ transform: 'scale(0)' }, { transform: 'scale(1)' }], { duration: 950, easing: 'cubic-bezier(.22,.8,.24,1)' }).onfinish = () => {
+    bgEl.style.backgroundColor = hex; [...bgEl.children].forEach(el => { if (el === c || el.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING) el.remove(); });
+  };
+  const rings = $('.rings'); rings.classList.remove('pulse'); void rings.offsetWidth; rings.classList.add('pulse');
+}
+function swapText(container, html) {
+  const old = [...container.children];
+  const el = document.createElement('span'); el.innerHTML = html; container.appendChild(el);
+  if (REDUCED) { old.forEach(o => o.remove()); return; }
+  old.forEach(o => o.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-18%)' }], { duration: 320, easing: 'ease-in', fill: 'forwards' }).onfinish = () => o.remove());
+  el.animate([{ opacity: 0, transform: 'translateY(22%)', letterSpacing: '.06em' }, { opacity: 1, transform: 'none', letterSpacing: '.005em' }], { duration: 620, easing: 'cubic-bezier(.22,.8,.24,1)', delay: 90, fill: 'backwards' });
+}
+function select(i, { instant = false } = {}) {
+  const prev = state.sel; state.sel = i; const d = DESIGNS[i];
+  if (prev === i && !instant) return;
+  const j = jerseys[i], ox = j ? j.screen.x : VW / 2, oy = j ? j.screen.y : VH / 2;
+  if (instant) { bgEl.style.backgroundColor = d.color; setBranchVars(d.color); $('#heroTitle').innerHTML = `<span>${d.branch.toUpperCase()}</span>`; }
+  else { revealColor(d.color, ox, oy); swapText($('#heroTitle'), d.branch.toUpperCase()); }
+  $('#cntNow').textContent = pad2(i + 1);
+  Object.assign($('#heroShop'), { textContent: `Customize ${d.branch} jersey →`, href: '#/jersey/' + d.branch.toLowerCase() });
+  cards.forEach((c, k) => c.classList.toggle('live', k === i));
+  if (state.step === 3) renderStep(3, true);
+  if (isPhone()) { const c = cards[i]; grid.scrollTo({ left: c.offsetLeft - (grid.clientWidth - c.offsetWidth) / 2, behavior: 'instant' }); }
+  if (!GL_OK && assets) drawSprite($('#heroFallback'), assets.fronts[i].sprite);
+  state.apT = 0;
+}
+function go(delta) { state.carTarget += delta; select(mod(state.carTarget, N)); }
+$('#nextBtn').onclick = () => go(1);
+$('#prevBtn').onclick = () => go(-1);
+const apBtn = $('#autoplay');
+function setAutoplay(on) { state.autoplay = on; apBtn.setAttribute('aria-pressed', on); $('#apIco').textContent = on ? '❚❚' : '▶'; state.apT = 0; }
+apBtn.onclick = () => setAutoplay(!state.autoplay);
+setAutoplay(state.autoplay);
+addEventListener('keydown', e => {
+  if (e.target.closest('input,select,textarea')) return;
+  if (scrollY > VH * .6) return;
+  if (e.key === 'ArrowRight') { go(1); e.preventDefault(); }
+  if (e.key === 'ArrowLeft') { go(-1); e.preventDefault(); }
+});
+
+/* ── drag / flick / click on the hero ── */
+const hero = $('#jerseys');
+const drag = { on: false, id: 0, x0: 0, y0: 0, pos0: 0, moved: false, lastX: 0, lastT: 0, v: 0, axis: null };
+hero.addEventListener('pointerdown', e => {
+  if (e.target.closest('button,a') || e.button > 0) return;
+  Object.assign(drag, { on: true, id: e.pointerId, x0: e.clientX, y0: e.clientY, pos0: state.carPos, moved: false, lastX: e.clientX, lastT: performance.now(), v: 0, axis: null });
+});
+hero.addEventListener('pointermove', e => {
+  const r = hero.getBoundingClientRect();
+  hero.querySelector('.bits').style.setProperty('--px', ((e.clientX / VW) - .5).toFixed(3));
+  hero.querySelector('.bits').style.setProperty('--py', (((e.clientY - r.top) / VH) - .5).toFixed(3));
+  if (!drag.on || e.pointerId !== drag.id) return;
+  const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
+  if (!drag.axis && Math.hypot(dx, dy) > 6) { drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'; if (drag.axis === 'x') { hero.setPointerCapture(e.pointerId); hero.classList.add('dragging'); } }
+  if (drag.axis !== 'x') return;
+  drag.moved = true;
+  const now = performance.now(), sp = heroLayout().spread;
+  drag.v = lerp(drag.v, (e.clientX - drag.lastX) / Math.max(1, now - drag.lastT), .4); drag.lastX = e.clientX; drag.lastT = now;
+  state.carPos = drag.pos0 - dx / sp;
+  state.apT = 0;
+});
+const endDrag = e => {
+  if (!drag.on || e.pointerId !== drag.id) return;
+  drag.on = false; hero.classList.remove('dragging');
+  if (drag.moved) {
+    const sp = heroLayout().spread, flick = -drag.v * 260 / sp;     // px/ms → slots
+    state.carTarget = Math.round(state.carPos + clamp(flick, -2, 2));
+    select(mod(state.carTarget, N));
+  } else if (drag.axis === null && e.type === 'pointerup') {
+    // click-to-select: nearest jersey under the pointer, front-most first
+    const hit = jerseys.map((j, i) => ({ j, i, k: wrapK(i - state.carPos) }))
+      .filter(({ j }) => j.group.visible && Math.abs(e.clientX - j.screen.x) < j.screen.w * .45 && Math.abs(e.clientY - j.screen.y) < j.screen.h * .48)
+      .sort((a, b) => Math.abs(a.k) - Math.abs(b.k))[0];
+    if (hit && Math.round(hit.k) !== 0) go(Math.round(hit.k));
+  }
+};
+hero.addEventListener('pointerup', endDrag);
+hero.addEventListener('pointercancel', endDrag);
+
+/* ════════════════ section 2 steps ════════════════ */
+function renderStep(s, force = false) {
+  if (s === state.step && !force) return;
+  const d = DESIGNS[state.sel], st = STEPS[s], head = typeof st.head === 'function' ? st.head(d) : st.head;
+  $('#fitLabel').textContent = `Step ${pad2(s + 1)} / ${pad2(STEPS.length)} · Fabric & Fit`;
+  swapText($('#fitHead'), head.join('<br>'));
+  swapText($('#fitCap'), st.cap(d));
+  $('#fitNum').textContent = pad2(s + 1);
+  $$('#fitTicks i').forEach((t, k) => t.classList.toggle('on', k <= s));
+  state.step = s;
+}
+const flip = { angle: 0, from: 0, to: 0, t0: 0, dur: 0 };
+function flipTo(target, now) {
+  if (flip.to === target) return;
+  flip.from = flip.angle; flip.to = target; flip.t0 = now; flip.dur = REDUCED ? 0 : HALF_TURN_MS * Math.abs(target - flip.from) / Math.PI;
+}
+function updateFlip(now) { flip.angle = flip.dur <= 0 ? flip.to : lerp(flip.from, flip.to, easeSine(clamp((now - flip.t0) / flip.dur))); }
+
+/* ════════════════ storm (fires once) ════════════════ */
+const STORM_N = 20, storm = { fired: false, t0: 0, ox: 0, oy: 0, pieces: [] };
+{
+  const rnd = mulberry32(20261117), keys = Object.keys(ICONS), cols = ['#ffcf33', '#f3eee4', '#ff6b5b', '#7fd8ff', '#b9f26b'];
+  for (let i = 0; i < STORM_N; i++) {
+    const el = document.createElement('i'); const k = keys[i % keys.length];
+    el.innerHTML = icon(k); el.style.color = cols[Math.floor(rnd() * cols.length)];
+    (i % 2 ? $('#stormOver') : $('#stormUnder')).appendChild(el);
+    const ang = (i / STORM_N) * Math.PI * 2 + (rnd() - .5) * .5;
+    storm.pieces.push({ el, ang, dist: .32 + rnd() * .42, spin: (rnd() < .5 ? -1 : 1) * (240 + rnd() * 540), rot0: rnd() * 360, sc: .7 + rnd() * .9, delay: rnd() * 140, dur: 1300 + rnd() * 600, grav: 80 + rnd() * 160 });
+  }
+}
+function fireStorm(x, y, now) { if (storm.fired || REDUCED) { storm.fired = true; return; } storm.fired = true; storm.t0 = now; storm.ox = x; storm.oy = y; }
+function updateStorm(now) {
+  if (!storm.t0) return;
+  const vmax = Math.max(VW, VH); let alive = false;
+  for (const p of storm.pieces) {
+    const t = clamp((now - storm.t0 - p.delay) / p.dur); if (t < 1) alive = true;
+    const e = easeOut3(t), r = p.dist * vmax * e;
+    const x = storm.ox + Math.cos(p.ang) * r, y = storm.oy + Math.sin(p.ang) * r * .8 + p.grav * t * t;
+    p.el.style.opacity = t <= 0 ? 0 : (1 - smooth(.62, 1, t)).toFixed(3);
+    p.el.style.transform = `translate(${x - 17}px,${y - 17}px) rotate(${p.rot0 + p.spin * e}deg) scale(${p.sc * (.4 + .6 * Math.min(1, t * 4))})`;
+  }
+  if (!alive) storm.t0 = 0;
+}
+
+/* ════════════════ shop cards: sizes, custom print, tilt, squash, cart ════════════════ */
+cards.forEach((card, i) => {
+  card.querySelectorAll('.sizes button').forEach(b => b.onclick = () => {
+    card.querySelectorAll('.sizes button').forEach(x => x.setAttribute('aria-checked', x === b)); });
+  const pickedSize = () => card.querySelector('.sizes [aria-checked=true]').dataset.size;
+  const openPdp = () => { draft.size = pickedSize(); saveDraft(); location.hash = '#/jersey/' + codeOf(i); };
+  card.addEventListener('click', e => { if (!e.target.closest('button,a,input,select')) openPdp(); });
+  card.querySelector('.add').onclick = openPdp;
+  if (!matchMedia('(hover: hover)').matches) return;
+  card.addEventListener('pointermove', e => {
+    const r = card.getBoundingClientRect(), px = (e.clientX - r.left) / r.width - .5, py = (e.clientY - r.top) / r.height - .5;
+    cardTilt[i].trx = -py * 9; cardTilt[i].try = px * 11;
+  });
+  card.addEventListener('pointerleave', () => { cardTilt[i].trx = 0; cardTilt[i].try = 0; card.classList.remove('press'); });
+  card.addEventListener('pointerdown', () => card.classList.add('press'));
+  addEventListener('pointerup', () => card.classList.remove('press'));
+});
+{ // staggered fade-in (delay comes from each card's transition-delay)
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0, rootMargin: '0px 0px 25% 0px' });   // start before the card scrolls in, so the travelling jersey never lands on an empty slot
+  cards.forEach(c => io.observe(c));
+}
+
+const badge = $('#badge'), cartPanel = $('#cartPanel'), cartChip = $('#cartChip');
+function renderCart() {
+  const total = state.cart.reduce((s, it) => s + it.price, 0);
+  cartPanel.innerHTML = `<h4>Your cart</h4>${state.cart.length ? `<ul>${state.cart.map((it, k) => `<li><span>${DESIGNS[it.id].branch} · ${esc(it.size)}${it.name || it.num ? ` · ${esc(it.name)}${it.num ? ' #' + esc(it.num) : ''}` : ''}${it.squad ? ' · squad' : ''}<br><button class="link-btn" data-go="${k}">Customize &amp; checkout →</button></span><span>${rupee(it.price)} <button data-k="${k}" aria-label="Remove">×</button></span></li>`).join('')}</ul><div class="total"><span>Total</span><span>${rupee(total)}</span></div><p class="empty" style="margin:10px 0 0">Each jersey is checked out separately — every order needs the wearer's PRN.</p>` : '<p class="empty">Nothing here yet — pick a department.</p>'}`;
+  cartPanel.querySelectorAll('button[data-k]').forEach(b => b.onclick = () => { state.cart.splice(+b.dataset.k, 1); saveCart(); badge.textContent = state.cart.length; renderCart(); });
+  cartPanel.querySelectorAll('button[data-go]').forEach(b => b.onclick = () => {
+    const it = state.cart[+b.dataset.go];
+    Object.assign(draft, { dept: codeOf(it.id), size: SIZES.includes(it.size) ? it.size : 'M', name: cleanPrintName(it.name).trim(), num: cleanNumber(it.num), qty: 1 });
+    saveDraft(); cartPanel.hidden = true; location.hash = '#/checkout';
+  });
+}
+cartChip.onclick = () => { const open = cartPanel.hidden; cartPanel.hidden = !open; cartChip.setAttribute('aria-expanded', open); if (open) renderCart(); };
+addEventListener('pointerdown', e => { if (!cartPanel.hidden && !e.target.closest('#cartPanel,#cartChip')) { cartPanel.hidden = true; cartChip.setAttribute('aria-expanded', false); } });
+
+function flyToCart(fromCanvas, delay = 0) {
+  return new Promise(res => {
+    const r = fromCanvas.getBoundingClientRect(), t = cartChip.getBoundingClientRect();
+    if (REDUCED || !r.width) { setTimeout(res, delay); return; }
+    const c = makeCanvas(fromCanvas.width, fromCanvas.height); c.getContext('2d').drawImage(fromCanvas, 0, 0); c.className = 'fly';
+    Object.assign(c.style, { width: `${r.width}px`, height: `${r.height}px` }); document.body.appendChild(c);
+    const tx = t.left + t.width / 2 - r.width / 2, ty = t.top + t.height / 2 - r.height / 2;
+    const mx = lerp(r.left, tx, .5), my = Math.min(r.top, ty) - 120;
+    c.animate([
+      { transform: `translate(${r.left}px,${r.top}px) scale(1) rotate(0deg)`, opacity: 1 },
+      { transform: `translate(${mx}px,${my}px) scale(.55) rotate(-12deg)`, opacity: 1, offset: .45 },
+      { transform: `translate(${tx}px,${ty}px) scale(.08) rotate(8deg)`, opacity: .6 },
+    ], { duration: 820, delay, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'both' }).onfinish = () => { c.remove(); res(); };
+  });
+}
+function bumpBadge() { badge.textContent = state.cart.length; badge.classList.remove('bump'); void badge.offsetWidth; badge.classList.add('bump'); }
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
+async function addToCart(items, canvases, priceEach = PRICE, squad = false) {
+  await Promise.all(items.map((it, k) => flyToCart(canvases[k], k * 110).then(() => { state.cart.push({ ...it, price: priceEach, squad }); saveCart(); bumpBadge(); })));
+  if (!cartPanel.hidden) renderCart();
+  toast(items.length > 1 ? `Squad kit reserved — ${items.length} jerseys added` : `${DESIGNS[items[0].id].branch} jersey (${items[0].size}) added`);
+}
+
+/* ════════════════ §8 kit builder ════════════════ */
+function renderKit() {
+  const slots = $('#slots'), S = state.kitSlots;
+  slots.innerHTML = S.map((s, k) => {
+    const d = s && DESIGNS[s.id];
+    return `<div class="kslot${s ? ' filled' : ''}${k === state.kitActive ? ' active' : ''}" data-k="${k}" ${d ? `style="--c:${d.color};--on:${onColor(d.color)}"` : ''}>
+      <div class="kslot-title"><span>Teammate ${k + 1}</span>${d ? `<b>${d.branch}</b>` : ''}</div>
+      <button class="kslot-pick" aria-label="${d ? `Slot ${k + 1}: ${d.branch}. Select to change` : `Slot ${k + 1}: empty. Select, then pick a branch`}">${d ? `<canvas width="${Math.round(240 * JERSEY_ASPECT)}" height="240"></canvas>` : '<span>Select, then tap a branch</span>'}</button>
+      ${s ? `<div class="kslot-fields">
+        <select aria-label="Size">${SIZES.map(z => `<option${z === s.size ? ' selected' : ''}>${z}</option>`).join('')}</select>
+        <input name="name" maxlength="12" placeholder="Name" value="${s.name}" aria-label="Name on back">
+        <input name="num" inputmode="numeric" maxlength="2" placeholder="No." value="${s.num}" aria-label="Number on back">
+      </div><button class="kslot-clear" aria-label="Clear slot ${k + 1}">×</button>` : ''}
+    </div>`;
+  }).join('');
+  $$('.kslot', slots).forEach(el => {
+    const k = +el.dataset.k, s = S[k];
+    el.querySelector('.kslot-pick').onclick = () => { state.kitActive = k; renderKit(); };
+    if (!s) return;
+    if (assets) drawSprite(el.querySelector('canvas'), assets.fronts[s.id].sprite);
+    el.querySelector('select').onchange = e => s.size = e.target.value;
+    el.querySelector('[name=name]').oninput = e => s.name = e.target.value.toUpperCase();
+    el.querySelector('[name=num]').oninput = e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 2); s.num = e.target.value; };
+    el.querySelector('.kslot-clear').onclick = () => { S[k] = null; state.kitActive = k; renderKit(); };
+  });
+  const filled = S.filter(Boolean).length, full = filled === S.length, sub = filled * PRICE, disc = full ? sub * SQUAD_DISCOUNT : 0;
+  $('#bundleLine').innerHTML = `${filled}/${S.length} filled · ${filled} × ${rupee(PRICE)} ${full ? `<s>${rupee(sub)}</s> − ${Math.round(SQUAD_DISCOUNT * 100)}% squad discount` : `= ${rupee(sub)} · fill every slot for ${Math.round(SQUAD_DISCOUNT * 100)}% off`}<b>${rupee(sub - disc)}</b>`;
+  const buy = $('#buyBtn'); buy.disabled = !full;
+  $('#slotCount').textContent = `${S.length} teammates`;
+  $('#slotMinus').disabled = S.length <= KIT_SLOTS.min; $('#slotPlus').disabled = S.length >= KIT_SLOTS.max;
+}
+$$('.pal').forEach(p => p.onclick = () => {
+  const S = state.kitSlots, k = state.kitActive, prev = S[k];
+  S[k] = { id: +p.dataset.id, size: prev?.size || 'M', name: prev?.name || '', num: prev?.num || '' };
+  const nextEmpty = S.findIndex((s, j) => !s && j !== k); state.kitActive = nextEmpty >= 0 ? nextEmpty : k;
+  renderKit();
+});
+$('#slotMinus').onclick = () => { const S = state.kitSlots; if (S.length > KIT_SLOTS.min) { S.pop(); state.kitActive = Math.min(state.kitActive, S.length - 1); renderKit(); } };
+$('#slotPlus').onclick = () => { const S = state.kitSlots; if (S.length < KIT_SLOTS.max) { S.push(null); state.kitActive = S.length - 1; renderKit(); } };
+$('#buyBtn').onclick = async () => {
+  const S = state.kitSlots; if (!S.every(Boolean)) return;
+  const canvases = $$('#slots .kslot canvas'), each = PRICE * (1 - SQUAD_DISCOUNT);
+  $('#buyBtn').disabled = true;
+  await addToCart(S.map(s => ({ ...s })), canvases, each, true);
+  state.kitSlots = S.map(() => null); state.kitActive = 0; renderKit();
+};
+renderKit();
+
+/* ════════════════════════════════════════════════════════════════════
+   ALKEMY 2027 — product page, live customisation, checkout (frontend demo)
+   Routes: #/jersey/<dept> · #/checkout · #/order/<id>   (anything else = the landing page)
+   ════════════════════════════════════════════════════════════════════ */
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const codeOf = i => DESIGNS[i].branch.toLowerCase();
+const deptIndex = code => Math.max(0, DESIGNS.findIndex(d => d.branch.toLowerCase() === code));
+const deptLabel = code => DEPARTMENTS.find(d => d.code === code)?.label || String(code).toUpperCase();
+const store = {
+  get(k, fb) { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+const DRAFT_KEY = 'alkemy27.draft', FORM_KEY = 'alkemy27.form', ORDERS_KEY = 'alkemy27.orders', CART_KEY = 'alkemy27.cart';
+const TITLE = document.title;
+
+// customisation draft — shared by the product page and checkout, persisted across reloads
+const draft = Object.assign({ dept: 'cse', size: 'M', name: '', num: '', qty: 1 }, store.get(DRAFT_KEY, {}));
+if (!DEPARTMENTS.some(d => d.code === draft.dept)) draft.dept = 'cse';
+if (!SIZES.includes(draft.size)) draft.size = 'M';
+draft.name = cleanPrintName(draft.name).trim(); draft.num = cleanNumber(draft.num); draft.qty = clamp(+draft.qty || 1, LIMITS.qtyMin, LIMITS.qtyMax);
+function saveDraft() { store.set(DRAFT_KEY, draft); }
+// personal details survive navigation for this tab; the Aadhaar number lives in memory only (never stored)
+const form = Object.assign({ fullName: '', email: '', phone: '', prn: '', year: '', aadhaarConsent: false }, (() => { try { return JSON.parse(sessionStorage.getItem(FORM_KEY)) || {}; } catch { return {}; } })());
+let aadhaarMem = '';
+function saveForm() { try { sessionStorage.setItem(FORM_KEY, JSON.stringify(form)); } catch {} }
+function saveCart() { store.set(CART_KEY, state.cart); }
+state.cart = store.get(CART_KEY, []).filter(it => DESIGNS[it?.id]);
+badge.textContent = state.cart.length;
+
+/* ── back print on the real 3D jersey ── */
+const defaultPrint = i => ({ name: DESIGNS[i].branch.toUpperCase(), num: pad2(i + 1) });
+const draftPrint = () => ({ name: draft.name || 'YOUR NAME', num: draft.num || '10', ghostName: !draft.name, ghostNum: !draft.num });
+let printed = -1;                                    // jersey currently wearing the draft print
+function applyDraftPrint() {
+  if (!jerseys.length) return false;
+  const i = deptIndex(draft.dept);
+  if (printed >= 0 && printed !== i) jerseys[printed].setPrint(defaultPrint(printed));
+  printed = i;
+  const ok = jerseys[i].setPrint(draftPrint());
+  scheduleThumbs();
+  return ok;
+}
+function restoreDefaultPrints() { if (printed >= 0 && jerseys[printed]) jerseys[printed].setPrint(defaultPrint(printed)); printed = -1; }
+function snapPair(i) {                               // front/back pictures of jersey i as currently printed
+  if (GL_OK && jerseys[i]) return { front: snapshotSprite(jerseys[i].spin), back: snapshotSprite(jerseys[i].spin, Math.PI) };
+  return assets ? { front: assets.fronts[i].sprite, back: assets.backs[i].sprite } : null;
+}
+function paintThumbs(root, pair, color) {
+  if (!pair) return;
+  root.querySelectorAll('canvas[data-snap],canvas[data-ok]').forEach(c => {
+    const src = (c.dataset.snap || c.dataset.ok) === 'back' ? pair.back : pair.front;
+    c.width = Math.round(src.width / 2); c.height = Math.round(src.height / 2); drawSprite(c, src);
+    c.closest('figure').style.setProperty('--c', color);
+  });
+}
+let thumbT = 0;
+function scheduleThumbs() { clearTimeout(thumbT); thumbT = setTimeout(() => { if (view === 'checkout') paintThumbs($('#viewCheckout'), snapPair(deptIndex(draft.dept)), DESIGNS[deptIndex(draft.dept)].color); }, 140); }
+
+/* ── 3D viewer: the shared WebGL canvas renders one jersey clipped to a stage box ── */
+const ZMIN = .8, ZMAX = 2.4;
+const viewer = { el: null, yaw: 0, pitch: 0, vyaw: 0, target: null, zoom: 1, tz: 1, auto: false, ptrs: new Map(), pinchD: 1, pinchZ: 1, lastT: 0, touched: 0 };
+const sideOf = yaw => Math.cos(yaw) >= 0 ? 'front' : 'back';
+function showSide(side) {
+  const turn = 2 * Math.PI, base = Math.round(viewer.yaw / turn) * turn;
+  const cands = side === 'front' ? [base - turn, base, base + turn] : [base - Math.PI, base + Math.PI];
+  const t = cands.reduce((a, b) => Math.abs(b - viewer.yaw) < Math.abs(a - viewer.yaw) ? b : a);
+  viewer.vyaw = 0; viewer.touched = performance.now();
+  if (REDUCED) { viewer.yaw = t; viewer.target = null; } else viewer.target = t;
+}
+function resetViewer(auto = false) { Object.assign(viewer, { yaw: 0, pitch: 0, vyaw: 0, target: null, tz: 1, zoom: 1, auto, touched: performance.now() }); }
+function bindStage(el) {
+  const pts = () => [...viewer.ptrs.values()];
+  const dist = () => { const [a, b] = pts(); return Math.hypot(a.x - b.x, a.y - b.y); };
+  el.addEventListener('pointerdown', e => {
+    if (e.target.closest('button')) return;
+    el.setPointerCapture(e.pointerId); viewer.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    viewer.target = null; viewer.vyaw = 0; viewer.lastT = viewer.touched = performance.now(); el.classList.add('grabbing');
+    if (viewer.ptrs.size === 2) { viewer.pinchD = Math.max(1, dist()); viewer.pinchZ = viewer.tz; }
+  });
+  el.addEventListener('pointermove', e => {
+    const p = viewer.ptrs.get(e.pointerId); if (!p) return;
+    const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+    if (viewer.ptrs.size >= 2) { viewer.tz = clamp(viewer.pinchZ * dist() / viewer.pinchD, ZMIN, ZMAX); return; }
+    const now = performance.now(), sec = Math.max(.008, (now - viewer.lastT) / 1000); viewer.lastT = viewer.touched = now;
+    viewer.yaw += dx * .011; viewer.pitch = clamp(viewer.pitch + dy * .005, -.4, .4);
+    viewer.vyaw = lerp(viewer.vyaw, dx * .011 / sec, .5);
+  });
+  const up = e => { viewer.ptrs.delete(e.pointerId); if (!viewer.ptrs.size) el.classList.remove('grabbing'); if (performance.now() - viewer.lastT > 90) viewer.vyaw = 0; };
+  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+  el.addEventListener('wheel', e => { e.preventDefault(); viewer.tz = clamp(viewer.tz * Math.exp(-e.deltaY * .0015), ZMIN, ZMAX); viewer.touched = performance.now(); }, { passive: false });
+  el.querySelectorAll('[data-side]').forEach(b => b.onclick = () => showSide(b.dataset.side));
+  el.querySelectorAll('[data-zoom]').forEach(b => b.onclick = () => {
+    const z = b.dataset.zoom;
+    if (z === 'reset') { viewer.tz = 1; viewer.pitch = 0; showSide('front'); } else viewer.tz = clamp(viewer.tz * (z === 'in' ? 1.25 : .8), ZMIN, ZMAX);
+  });
+}
+bindStage($('#pdpStage')); bindStage($('#coStage'));
+let sideShown = '';
+function viewerFrame(now, dt) {
+  const el = viewer.el;
+  if (!GL_OK) return;
+  renderer.setScissorTest(false); renderer.clear();
+  if (!jerseys.length || !el) return;
+  if (viewer.target !== null) {
+    viewer.yaw = lerp(viewer.yaw, viewer.target, 1 - Math.exp(-dt * 9));
+    if (Math.abs(viewer.yaw - viewer.target) < .002) { viewer.yaw = viewer.target; viewer.target = null; }
+  } else if (!viewer.ptrs.size) {
+    viewer.yaw += viewer.vyaw * dt; viewer.vyaw *= Math.exp(-dt * 3.5);
+    if (viewer.auto && !REDUCED && now - viewer.touched > 2500) viewer.yaw += dt * .45;
+    viewer.pitch *= Math.exp(-dt * 1.5);
+  }
+  viewer.zoom = REDUCED ? viewer.tz : lerp(viewer.zoom, viewer.tz, 1 - Math.exp(-dt * 10));
+  const side = sideOf(viewer.yaw);
+  if (side !== sideShown) { sideShown = side; $$('.stage [data-side]').forEach(b => b.setAttribute('aria-pressed', b.dataset.side === side)); }
+  const i = deptIndex(draft.dept), r = el.getBoundingClientRect();
+  jerseys.forEach((j, k) => { if (k !== i) j.place(0, 0, 0, 0, 0); });
+  if (r.bottom < 0 || r.top > VH || r.width < 2) return;
+  const [padT, padB] = (el.dataset.pad || '16 16').split(' ').map(Number);       // keep hint / control strips clear
+  const top = r.top + padT, bot = r.bottom - padB, fit = Math.min(bot - top, (r.width - 20) / JERSEY_ASPECT);
+  jerseys[i].place(r.left + r.width / 2, (top + bot) / 2, 0, Math.max(10, fit) * viewer.zoom, viewer.yaw, viewer.pitch, 0);
+  renderer.setScissorTest(true); renderer.setScissor(r.left, VH - r.bottom, r.width, r.height);
+  renderer.render(scene, camera);
+  renderer.setScissorTest(false);
+}
+
+/* ── router ── */
+const VIEWS = { jersey: $('#viewJersey'), checkout: $('#viewCheckout'), order: $('#viewOrder') };
+let view = 'home', homeScroll = 0;
+document.body.dataset.view = 'home';
+function parseRoute() {
+  const h = location.hash; let m;
+  if ((m = h.match(/^#\/jersey\/([a-z]+)/))) return { name: 'jersey', dept: m[1] };
+  if (/^#\/checkout/.test(h)) return { name: 'checkout' };
+  if ((m = h.match(/^#\/order\/([A-Z0-9-]+)/i))) return { name: 'order', id: m[1].toUpperCase() };
+  return { name: 'home' };
+}
+function route() {
+  const r = parseRoute();
+  if (view === 'home' && r.name !== 'home') homeScroll = scrollY;
+  view = r.name; document.body.dataset.view = view;
+  Object.entries(VIEWS).forEach(([k, el]) => { el.hidden = k !== view; });
+  cartPanel.hidden = true;
+  if (view === 'home') {
+    restoreDefaultPrints(); viewer.el = null; zone = ''; activeSec = ''; document.title = TITLE;
+    const id = location.hash.slice(1), target = /^[a-z]+$/i.test(id) ? document.getElementById(id) : null;
+    requestAnimationFrame(() => target ? target.scrollIntoView({ behavior: 'instant' }) : scrollTo({ top: homeScroll, behavior: 'instant' }));
+    return;
+  }
+  zone = 'light'; document.body.dataset.zone = 'light'; activeSec = ''; $$('[data-sec]').forEach(l => l.classList.remove('on'));
+  scrollTo({ top: 0, behavior: 'instant' });
+  if (view === 'jersey') openPdp(r.dept);
+  else if (view === 'checkout') openCheckout();
+  else openOrder(r.id);
+}
+
+/* ── product page ── */
+const pdpName = $('#pdpName'), pdpNum = $('#pdpNum');
+$('#pdpDept').innerHTML = DEPARTMENTS.map(d => `<button type="button" data-dept="${d.code}" style="--c:${DESIGNS[deptIndex(d.code)].color}"><span class="dot"></span>${d.label}</button>`).join('');
+$('#pdpSize').innerHTML = SIZES.map(s => `<button type="button" data-size="${s}">${s}</button>`).join('');
+function syncPdp() {
+  const d = DESIGNS[deptIndex(draft.dept)];
+  $('#pdpTitle').textContent = deptLabel(draft.dept);
+  $('#pdpPrice').textContent = rupee(PRICE);
+  $$('#pdpDept [data-dept]').forEach(b => b.setAttribute('aria-pressed', b.dataset.dept === draft.dept));
+  $$('#pdpSize [data-size]').forEach(b => b.setAttribute('aria-pressed', b.dataset.size === draft.size));
+  if (pdpName.value !== draft.name) pdpName.value = draft.name;
+  if (pdpNum.value !== draft.num) pdpNum.value = draft.num;
+  const st = $('#pdpStage'); st.style.setProperty('--c', d.color); st.style.setProperty('--on', onColor(d.color));
+}
+function openPdp(code) {
+  if (DEPARTMENTS.some(d => d.code === code)) draft.dept = code;
+  saveDraft();
+  document.title = `${deptLabel(draft.dept)} Jersey · ALKEMY 2027`;
+  viewer.el = $('#pdpStage'); resetViewer(false);
+  syncPdp();
+  $('#pdpStage .stage-note').hidden = applyDraftPrint();
+}
+$('#pdpDept').onclick = e => { const b = e.target.closest('[data-dept]'); if (!b) return; history.replaceState(null, '', '#/jersey/' + b.dataset.dept); route(); };
+$('#pdpSize').onclick = e => { const b = e.target.closest('[data-size]'); if (!b) return; draft.size = b.dataset.size; saveDraft(); syncPdp(); };
+pdpName.addEventListener('input', () => { const v = cleanPrintName(pdpName.value); if (v !== pdpName.value) pdpName.value = v; draft.name = v.trim(); saveDraft(); applyDraftPrint(); });
+pdpNum.addEventListener('input', () => { const v = cleanNumber(pdpNum.value); if (v !== pdpNum.value) pdpNum.value = v; draft.num = v; saveDraft(); applyDraftPrint(); });
+[pdpName, pdpNum].forEach(el => el.addEventListener('focus', () => showSide('back')));
+$('#pdpReset').onclick = () => { Object.assign(draft, { name: '', num: '', size: 'M', qty: 1 }); saveDraft(); syncPdp(); applyDraftPrint(); showSide('front'); toast('Customization reset'); };
+$('#pdpOrder').onclick = () => { location.hash = '#/checkout'; };
+$('#pdpSave').onclick = () => {
+  state.cart.push({ id: deptIndex(draft.dept), size: draft.size, name: draft.name, num: draft.num, price: PRICE });
+  saveCart(); bumpBadge(); toast(`${deptLabel(draft.dept)} jersey (${draft.size}) added to cart`);
+};
+
+/* ── checkout ── */
+const coForm = $('#coForm'), F = n => coForm.elements[n];
+$('#f-department').innerHTML = '<option value="">Select…</option>' + DEPARTMENTS.map(d => `<option value="${d.code}">${d.label}</option>`).join('');
+$('#f-year').innerHTML = '<option value="">Select…</option>' + YEARS.map(y => `<option>${y}</option>`).join('');
+$('#f-size').innerHTML = SIZES.map(s => `<option>${s}</option>`).join('');
+const fmtAadhaar = s => digits(s).slice(0, 12).replace(/(\d{4})(?=\d)/g, '$1 ');
+const FIELDS = ['fullName', 'email', 'phone', 'aadhaar', 'aadhaarConsent', 'prn', 'department', 'year', 'size', 'number', 'printName', 'qty'];
+let coStep = 1, coValue = null;
+function fillCheckout() {
+  for (const k of ['fullName', 'email', 'phone', 'prn', 'year']) F(k).value = form[k] || '';
+  F('aadhaarConsent').checked = !!form.aadhaarConsent;
+  F('aadhaar').value = fmtAadhaar(aadhaarMem);
+  F('department').value = draft.dept; F('size').value = draft.size; F('number').value = draft.num; F('printName').value = draft.name;
+  FIELDS.forEach(n => setErr(n, ''));
+  updateCoSide();
+}
+function updateCoSide() {
+  const d = DESIGNS[deptIndex(draft.dept)], amt = PRICE * draft.qty;
+  $('#f-qtyOut').textContent = draft.qty; F('amount').value = rupee(amt);
+  ['#coStage'].forEach(s => { $(s).style.setProperty('--c', d.color); $(s).style.setProperty('--on', onColor(d.color)); });
+  $$('#viewCheckout .thumbs figure').forEach(f => f.style.setProperty('--c', d.color));
+  $('#coSel').innerHTML = [['Department', deptLabel(draft.dept)], ['Size', draft.size], ['Name', draft.name || '—'], ['Number', draft.num || '—']].map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('');
+  $('#coPrice').innerHTML = `<div><span>${esc(deptLabel(draft.dept))} jersey × ${draft.qty}</span><span>${rupee(amt)}</span></div><div><span>Name &amp; number print</span><span>Included</span></div><div><span>Collection</span><span>ALKEMY desk</span></div><div class="total"><span>Total payable</span><span>${rupee(amt)}</span></div>`;
+  $('#upiAmt').textContent = rupee(amt);
+  if (!$('#payBtn').disabled) $('#payBtn').textContent = `Pay ${rupee(amt)} (demo)`;
+  ['#coBack', '#coBack2'].forEach(s => { $(s).href = '#/jersey/' + draft.dept; });
+}
+function setErr(n, msg) {
+  const e = $('#e-' + n); if (e) e.textContent = msg || '';
+  const inp = F(n), wrap = (inp?.closest && inp.closest('.field')) || $('#w-' + n);
+  if (wrap) wrap.classList.toggle('invalid', !!msg);
+  if (inp?.setAttribute) { inp.setAttribute('aria-invalid', msg ? 'true' : 'false'); inp.setAttribute('aria-describedby', 'e-' + n); }
+}
+function collect() {
+  return { fullName: F('fullName').value, email: F('email').value, phone: F('phone').value, aadhaar: aadhaarMem, aadhaarConsent: F('aadhaarConsent').checked,
+    prn: F('prn').value, department: F('department').value, year: F('year').value, size: F('size').value, number: F('number').value, printName: F('printName').value, qty: draft.qty };
+}
+function openCheckout() {
+  document.title = 'Checkout · ALKEMY 2027 Jerseys';
+  viewer.el = $('#coStage'); resetViewer(true);
+  fillCheckout(); applyDraftPrint(); setStep(1);
+}
+function setStep(n) {
+  coStep = n;
+  coForm.hidden = n !== 1; $('#coReview').hidden = n !== 2; $('#coPay').hidden = n !== 3;
+  $$('.steps li').forEach(li => { const s = +li.dataset.step; li.classList.toggle('on', s === n); li.classList.toggle('done', s < n); if (s === n) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current'); });
+  if (n === 2) renderReview();
+  if (n === 3) drawDemoQr($('#upiQr'), `${draft.dept}${draft.qty}${draft.num}`);
+  scheduleThumbs();
+  if (view === 'checkout') scrollTo({ top: 0, behavior: REDUCED ? 'instant' : 'smooth' });
+}
+coForm.addEventListener('input', e => {
+  const t = e.target, n = t.name;
+  if (n === 'phone') t.value = digits(t.value).slice(0, 10);
+  if (n === 'aadhaar') { t.value = fmtAadhaar(t.value); aadhaarMem = digits(t.value); }
+  if (n === 'number') { t.value = cleanNumber(t.value); draft.num = t.value; }
+  if (n === 'printName') { t.value = cleanPrintName(t.value); draft.name = t.value.trim(); }
+  if (['fullName', 'email', 'phone', 'prn'].includes(n)) form[n] = t.value;
+  if (n === 'number' || n === 'printName') { saveDraft(); applyDraftPrint(); updateCoSide(); }
+  saveForm(); setErr(n, '');
+});
+coForm.addEventListener('change', e => {
+  const n = e.target.name;
+  if (n === 'department' && e.target.value) { draft.dept = e.target.value; applyDraftPrint(); }
+  if (n === 'size') draft.size = e.target.value;
+  if (n === 'year') form.year = e.target.value;
+  if (n === 'aadhaarConsent') form.aadhaarConsent = e.target.checked;
+  saveDraft(); saveForm(); updateCoSide(); setErr(n, '');
+});
+['number', 'printName'].forEach(n => F(n).addEventListener('focus', () => showSide('back')));
+$$('[data-qty]').forEach(b => b.onclick = () => { draft.qty = clamp(draft.qty + +b.dataset.qty, LIMITS.qtyMin, LIMITS.qtyMax); saveDraft(); updateCoSide(); setErr('qty', ''); });
+coForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const r = validateOrder(collect());
+  FIELDS.forEach(n => setErr(n, r.errors[n]));
+  if (!r.ok) { const first = F(Object.keys(r.errors)[0]); if (first?.focus) first.focus(); toast('Please fix the highlighted fields'); return; }
+  coValue = r.value; setStep(2);
+});
+function renderReview() {
+  const v = coValue;
+  const rows = [['Customer name', v.fullName], ['Email', v.email], ['Mobile', v.phone], ['PRN / Roll No.', v.prn], ['Aadhaar', maskAadhaar(v.aadhaar)],
+    ['Department', deptLabel(v.department)], ['Academic year', v.year], ['Jersey size', v.size], ['Printed name', v.printName], ['Printed number', v.number],
+    ['Quantity', v.qty], ['Total payment', rupee(PRICE * v.qty)]];
+  $('#rvList').innerHTML = rows.map(([k, x]) => `<dt>${k}</dt><dd>${esc(x)}</dd>`).join('');
+}
+$('#rvEditDetails').onclick = () => setStep(1);
+$('#rvEditJersey').onclick = () => { location.hash = '#/jersey/' + draft.dept; };
+$('#rvPay').onclick = () => setStep(3);
+$('#payBack').onclick = () => setStep(2);
+
+/* ── demo payment ── */
+let payMethod = 'upi', shotFile = null;
+$$('.tabs [data-method]').forEach(b => b.onclick = () => {
+  payMethod = b.dataset.method;
+  $$('.tabs [data-method]').forEach(x => x.setAttribute('aria-selected', x === b));
+  $('#payUpi').hidden = payMethod !== 'upi'; $('#payCard').hidden = payMethod !== 'card';
+});
+function drawDemoQr(c, seed) {          // decorative stand-in for a real UPI QR
+  const x = c.getContext('2d'), n = 25, s = c.width / (n + 2), rnd = mulberry32([...seed].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) | 0, 7));
+  x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.fillStyle = '#141414';
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    const finderZone = (i < 8 && j < 8) || (i > n - 9 && j < 8) || (i < 8 && j > n - 9);
+    if (!finderZone && rnd() < .5) x.fillRect((i + 1) * s, (j + 1) * s, Math.ceil(s), Math.ceil(s));
+  }
+  for (const [cx, cy] of [[0, 0], [n - 7, 0], [0, n - 7]]) {
+    x.fillStyle = '#141414'; x.fillRect((cx + 1) * s, (cy + 1) * s, 7 * s, 7 * s);
+    x.fillStyle = '#fff'; x.fillRect((cx + 2) * s, (cy + 2) * s, 5 * s, 5 * s);
+    x.fillStyle = '#141414'; x.fillRect((cx + 3) * s, (cy + 3) * s, 3 * s, 3 * s);
+  }
+}
+$('#p-utr').addEventListener('input', e => { e.target.value = digits(e.target.value).slice(0, 12); });
+for (const k of ['vpa', 'utr', 'cnum', 'cexp', 'ccvv', 'cname']) $('#p-' + k).addEventListener('input', () => { $('#e-' + k).textContent = ''; $('#e-' + k).closest('.field').classList.remove('invalid'); });
+$('#p-cnum').addEventListener('input', e => { e.target.value = digits(e.target.value).slice(0, 16).replace(/(\d{4})(?=\d)/g, '$1 '); });
+$('#p-cexp').addEventListener('input', e => { const d = digits(e.target.value).slice(0, 4); e.target.value = d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d; });
+$('#p-ccvv').addEventListener('input', e => { e.target.value = digits(e.target.value).slice(0, 3); });
+$('#p-shot').addEventListener('change', e => {
+  const f = e.target.files[0], img = $('#shotPreview'); shotFile = null; $('#e-shot').textContent = ''; img.hidden = true;
+  if (!f) return;
+  if (!/^image\/(png|jpeg|webp)$/.test(f.type) || f.size > 5 * 1024 * 1024) { $('#e-shot').textContent = 'Use a PNG, JPG or WebP image under 5 MB.'; e.target.value = ''; return; }
+  shotFile = f; img.src = URL.createObjectURL(f); img.hidden = false;
+});
+const luhn = s => { let sum = 0, alt = false; for (let i = s.length - 1; i >= 0; i--) { let n = +s[i]; if (alt) { n *= 2; if (n > 9) n -= 9; } sum += n; alt = !alt; } return sum % 10 === 0; };
+function validatePay() {
+  const e = {};
+  if (payMethod === 'upi') {
+    if (!/^[\w.-]{2,}@[a-zA-Z]{2,}$/.test($('#p-vpa').value.trim())) e.vpa = 'Enter a UPI ID like name@bank.';
+    const utr = $('#p-utr').value.trim(); if (utr && !isUtr(utr)) e.utr = 'UTR is 12 digits.';
+  } else {
+    const n = digits($('#p-cnum').value); if (n.length < 13 || !luhn(n)) e.cnum = 'Enter a valid card number.';
+    const m = $('#p-cexp').value.match(/^(\d{2})\/(\d{2})$/);
+    if (!m || +m[1] < 1 || +m[1] > 12 || new Date(2000 + +m[2], +m[1], 0, 23, 59) < new Date()) e.cexp = 'Enter a valid future expiry (MM/YY).';
+    if (!/^\d{3}$/.test($('#p-ccvv').value)) e.ccvv = 'CVV is 3 digits.';
+    if ($('#p-cname').value.trim().length < 2) e.cname = 'Enter the name on the card.';
+  }
+  for (const k of ['vpa', 'utr', 'cnum', 'cexp', 'ccvv', 'cname']) { $('#e-' + k).textContent = e[k] || ''; $('#e-' + k).closest('.field').classList.toggle('invalid', !!e[k]); }
+  return e;
+}
+function placeOrder(v) {
+  const id = 'ALK27-' + Array.from(crypto.getRandomValues(new Uint8Array(6)), b => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('');
+  const order = {
+    id, createdAt: new Date().toISOString(), status: 'paid', mode: 'demo',
+    customer: { fullName: v.fullName, email: v.email, phone: v.phone, prn: v.prn, year: v.year, aadhaar: maskAadhaar(v.aadhaar) },
+    jersey: { dept: v.department, size: v.size, number: v.number, printName: v.printName },
+    qty: v.qty, unitPrice: PRICE, amount: PRICE * v.qty,
+    payment: { txnId: (() => { const d = new Date(), z = n => String(n).padStart(2, '0'); return `${z(d.getDate())}${z(d.getMonth() + 1)}${String(d.getFullYear()).slice(2)}${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}${String(crypto.getRandomValues(new Uint16Array(1))[0] % 1000).padStart(3, '0')}`; })(), method: payMethod, ref: payMethod === 'upi' ? ($('#p-utr').value.trim() || $('#p-vpa').value.trim()) : '•••• ' + digits($('#p-cnum').value).slice(-4), screenshot: shotFile?.name || null },
+  };
+  const all = store.get(ORDERS_KEY, []); all.unshift(order); store.set(ORDERS_KEY, all.slice(0, 50));
+  try { sessionStorage.setItem('alkemy27.print', id); } catch {}      // print the receipt when the confirmation opens
+  return order;
+}
+$('#payBtn').onclick = async () => {
+  if (Object.keys(validatePay()).length) { toast('Please check your payment details'); return; }
+  const r = validateOrder(collect());                     // re-check everything right before paying
+  if (!r.ok) { setStep(1); FIELDS.forEach(n => setErr(n, r.errors[n])); toast('Some details need fixing'); return; }
+  const btn = $('#payBtn'); btn.disabled = true; btn.innerHTML = '<span class="spinner" aria-hidden="true"></span> Processing (demo)…';
+  await new Promise(res => setTimeout(res, REDUCED ? 300 : 1600));
+  const order = placeOrder(r.value);
+  aadhaarMem = ''; form.aadhaarConsent = false; saveForm();
+  ['p-vpa', 'p-utr', 'p-cnum', 'p-cexp', 'p-ccvv', 'p-cname', 'p-shot'].forEach(k => { $('#' + k).value = ''; });
+  shotFile = null; $('#shotPreview').hidden = true;
+  btn.disabled = false; coValue = null;
+  location.hash = '#/order/' + order.id;
+};
+
+/* ── payment receipt: one layout → canvas (screen) + vector PDF (download) ── */
+// Header lines — edit to match the organisers. (Bank account numbers are deliberately not printed.)
+const RECEIPT = {
+  title: 'Payment Receipt',
+  org: ['ALKEMY 2027', 'DEPARTMENT JERSEY COLLECTION'],
+  institution: ['BHARATI VIDYAPEETH', '(DEEMED TO BE UNIVERSITY)', 'DEPT. OF ENGG. & TECH., MUMBAI'],
+  section: 'Remittance of Jersey Fees',
+  footer: 'Auto generated Receipt',
+};
+// Helvetica / Helvetica-Bold advance widths (1/1000 em) for ASCII 32–126 — the PDF's built-in fonts, so the
+// on-screen receipt (Arial ≈ Helvetica metrics) and the PDF lay out identically.
+const HELV = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+const HELVB = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584];
+const latin1 = s => String(s ?? '').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, '-').replace(/[^\x20-\x7e\xa0-\xff]/g, '?');
+const textW = (s, size, bold) => [...s].reduce((w, ch) => { const c = ch.charCodeAt(0); return w + (c >= 32 && c <= 126 ? (bold ? HELVB : HELV)[c - 32] : 556); }, 0) * size / 1000;
+function wrapText(s, maxW, size, bold) {
+  const out = []; let line = '';
+  for (const word of latin1(s).split(' ')) {
+    const t = line ? line + ' ' + word : word;
+    if (textW(t, size, bold) <= maxW || !line) line = t; else { out.push(line); line = word; }
+  }
+  if (line) out.push(line);
+  return out;
+}
+const inr = n => (+n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function inWords(num) {                       // Indian numbering: Thousand / Lakh / Crore
+  const a = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  const two = n => n < 20 ? a[n] : b[Math.floor(n / 10)] + (n % 10 ? ' ' + a[n % 10] : '');
+  const three = n => [n >= 100 ? a[Math.floor(n / 100)] + ' Hundred' : '', n % 100 ? two(n % 100) : ''].filter(Boolean).join(' ');
+  const n = Math.floor(num); if (!n) return 'Zero';
+  return [[Math.floor(n / 1e7), ' Crore', three], [Math.floor(n / 1e5) % 100, ' Lakh', two], [Math.floor(n / 1e3) % 100, ' Thousand', two], [n % 1000, '', three]]
+    .filter(([v]) => v).map(([v, unit, f]) => f(v) + unit).join(' ');
+}
+const txnIdOf = o => o.payment.txnId || o.createdAt.replace(/\D/g, '').slice(2, 14) + '000';
+
+/** Layout in PDF points (origin top-left): [{t:'text'|'line'|'rect'|'wm', …}] */
+function receiptLayout(o) {
+  const W = 288, M = 16, ops = []; let y = 0;
+  const T = (s, x, yy, size, bold = false, align = 'left') => ops.push({ t: 'text', s: latin1(s), x, y: yy, size, bold, align });
+  const L = (x1, y1, x2, y2, lw = .8) => ops.push({ t: 'line', x1, y1, x2, y2, lw });
+  const center = (s, size, bold, gap) => wrapText(s, W - 2 * M, size, bold).forEach(ln => { y += size; T(ln, W / 2, y, size, bold, 'center'); y += gap; });
+  const kv = (k, v, size = 9.5) => {
+    const kw = textW(latin1(k) + ' :', size, true) + 5;
+    const lines = wrapText(v, W - 2 * M - kw, size, false);
+    y += size; T(k + ' :', M, y, size, true);
+    lines.forEach((ln, i) => { if (i) y += size + 2; T(ln, M + kw, y, size); });
+    y += 5;
+  };
+  const dept = deptLabel(o.jersey.dept), dt = new Date(o.createdAt);
+  y += 22; T(RECEIPT.title, W / 2, y, 15, true, 'center'); y += 9; L(0, y, W, y, 1.2); y += 8;
+  RECEIPT.org.forEach(s => center(s, 11.5, true, 3));
+  y += 4; RECEIPT.institution.forEach(s => center(s, 9.5, true, 2));
+  y += 8; center(`Order No. : ${o.id}`, 11, true, 4);
+  y += 6; center(RECEIPT.section, 10.5, false, 4); y += 8;
+  kv('Date', dt.toLocaleDateString('en-GB'));
+  kv('Name', o.customer.fullName.toUpperCase());
+  kv('PRN', o.customer.prn);
+  kv('Department', `${dept} - ${o.customer.year}`);
+  kv('Email', o.customer.email);
+  kv('Mobile', o.customer.phone);
+  kv('Session', 'ALKEMY 2027');
+  kv('Jersey', `Size ${o.jersey.size} | Name "${o.jersey.printName}" | No. ${o.jersey.number}`);
+  y += 8;
+  // particulars table
+  const x0 = M, x3 = W - M, x1 = x0 + 26, x2 = x3 - 76, rows = [
+    ['1', `${dept} Jersey (${o.jersey.size}) x ${o.qty}`, o.amount], ['2', 'Name & Number Printing', 0],
+    ['3', 'Customisation Charges', 0], ['4', 'Collection Charges', 0], ['5', 'Other Charges', 0]];
+  const top = y, hdrH = 26, rowH = 15;
+  T('SR.', (x0 + x1) / 2, top + 16, 9, true, 'center'); T('Particulars', (x1 + x2) / 2, top + 16, 9, true, 'center');
+  T('Amount', (x2 + x3) / 2, top + 11, 9, true, 'center'); T('(Rs.)', (x2 + x3) / 2, top + 21.5, 9, true, 'center');
+  y = top + hdrH; L(x0, y, x3, y);
+  for (const [sr, part, amt] of rows) {
+    let size = 9; while (textW(latin1(part), size, false) > x2 - x1 - 6 && size > 6.5) size -= .25;
+    T(sr, (x0 + x1) / 2, y + 11, 9, false, 'center'); T(part, x1 + 3, y + 11, size); T(inr(amt), x3 - 3, y + 11, 9, false, 'right');
+    y += rowH; L(x0, y, x3, y);
+  }
+  T('Total', x1 + 3, y + 11, 9, true); T(inr(o.amount), x3 - 3, y + 11, 9, true, 'right'); y += rowH;
+  ops.push({ t: 'rect', x: x0, y: top, w: x3 - x0, h: y - top, lw: .8 });
+  L(x1, top, x1, y - rowH); L(x1, y - rowH, x1, y); L(x2, top, x2, y);
+  y += 12;
+  wrapText(`Amount in Words: ${inWords(o.amount)} Only`, W - 2 * M, 10, false).forEach(ln => { y += 10; T(ln, M, y, 10); y += 3; });
+  y += 12;
+  kv('Payment Mode', o.payment.method === 'card' ? `Card ending ${digits(o.payment.ref).slice(-4)} (demo)` : 'UPI (demo)');
+  kv('Transaction Id', txnIdOf(o));
+  kv('Status', 'PAID - DEMO TRANSACTION');
+  y += 14; L(0, y, W, y, 1.2); y += 15;
+  T(RECEIPT.footer, W / 2, y, 9, true, 'center'); y += 11;
+  T('Demo receipt - not valid for any real payment or fee.', W / 2, y, 7, false, 'center'); y += 10;
+  ops.unshift({ t: 'wm', s: 'DEMO', x: W / 2, y: y * .56, size: 70, angle: -32 });
+  ops.push({ t: 'rect', x: .6, y: .6, w: W - 1.2, h: y - 1.2, lw: 1.2 });
+  return { w: W, h: y, ops };
+}
+const alignX = op => op.align === 'center' ? op.x - textW(op.s, op.size, op.bold) / 2 : op.align === 'right' ? op.x - textW(op.s, op.size, op.bold) : op.x;
+
+function paintReceipt(canvas, R, cssW) {
+  const k = cssW / R.w * clamp(devicePixelRatio || 1, 2, 3);
+  canvas.width = Math.round(R.w * k); canvas.height = Math.round(R.h * k); canvas.style.width = cssW + 'px';
+  const x = canvas.getContext('2d'); x.setTransform(k, 0, 0, k, 0, 0);
+  x.fillStyle = '#fff'; x.fillRect(0, 0, R.w, R.h); x.strokeStyle = x.fillStyle = '#121212'; x.textBaseline = 'alphabetic';
+  for (const op of R.ops) {
+    if (op.t === 'wm') {
+      x.save(); x.translate(op.x, op.y); x.rotate(op.angle * Math.PI / 180); x.font = `bold ${op.size}px Helvetica, Arial, sans-serif`;
+      x.fillStyle = 'rgba(0,0,0,.06)'; x.textAlign = 'center'; x.fillText(op.s, 0, op.size * .35); x.restore();
+    } else if (op.t === 'rect') { x.lineWidth = op.lw; x.strokeRect(op.x, op.y, op.w, op.h); }
+    else if (op.t === 'line') { x.lineWidth = op.lw; x.beginPath(); x.moveTo(op.x1, op.y1); x.lineTo(op.x2, op.y2); x.stroke(); }
+    else { x.font = `${op.bold ? 'bold ' : ''}${op.size}px Helvetica, Arial, sans-serif`; x.textAlign = 'left'; x.fillText(op.s, alignX(op), op.y); }
+  }
+}
+
+/** Minimal PDF 1.4 writer: one page the size of the receipt, built-in Helvetica fonts, vector text and rules. */
+function receiptPdf(R, o) {
+  const f = n => (Math.round(n * 100) / 100).toString(), H = R.h;
+  const pstr = s => '(' + s.replace(/[\\()]/g, m => '\\' + m) + ')';
+  let c = '0.07 0.07 0.07 RG 0.07 0.07 0.07 rg\n';
+  for (const op of R.ops) {
+    if (op.t === 'wm') {
+      const th = -op.angle * Math.PI / 180, C = Math.cos(th), S = Math.sin(th), w = textW(op.s, op.size, true), d = op.size * .35;
+      const px = op.x - C * w / 2 + S * d, py = H - op.y - S * w / 2 - C * d;
+      c += `q 0.94 g BT /F2 ${op.size} Tf ${f(C)} ${f(S)} ${f(-S)} ${f(C)} ${f(px)} ${f(py)} Tm ${pstr(op.s)} Tj ET Q\n`;
+    } else if (op.t === 'rect') c += `${op.lw} w ${f(op.x)} ${f(H - op.y - op.h)} ${f(op.w)} ${f(op.h)} re S\n`;
+    else if (op.t === 'line') c += `${op.lw} w ${f(op.x1)} ${f(H - op.y1)} m ${f(op.x2)} ${f(H - op.y2)} l S\n`;
+    else c += `BT /${op.bold ? 'F2' : 'F1'} ${op.size} Tf ${f(alignX(op))} ${f(H - op.y)} Td ${pstr(op.s)} Tj ET\n`;
+  }
+  const objs = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${f(R.w)} ${f(H)}] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 4 0 R >>`,
+    `<< /Length ${c.length} >>\nstream\n${c}endstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>',
+    `<< /Title ${pstr(latin1(`ALKEMY 2027 Receipt ${o.id}`))} /Producer (RallyKit) >>`,
+  ];
+  let out = '%PDF-1.4\n%\xe2\xe3\xcf\xd3\n'; const offs = [];
+  objs.forEach((ob, i) => { offs.push(out.length); out += `${i + 1} 0 obj\n${ob}\nendobj\n`; });
+  const xref = out.length;
+  out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map(n => String(n).padStart(10, '0') + ' 00000 n \n').join('');
+  out += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R /Info 7 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return new Blob([Uint8Array.from(out, ch => ch.charCodeAt(0) & 255)], { type: 'application/pdf' });
+}
+function downloadReceipt(o) {
+  const url = URL.createObjectURL(receiptPdf(receiptLayout(o), o));
+  const a = Object.assign(document.createElement('a'), { href: url, download: `ALKEMY2027-Receipt-${o.id}.pdf` });
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+  toast('Receipt downloaded');
+}
+function viewReceipt(o) {
+  const dlg = $('#rcptDialog'), cv = $('#rcptBig');
+  paintReceipt(cv, receiptLayout(o), Math.min(460, innerWidth - 56));
+  $('#rcptDl').onclick = () => downloadReceipt(o);
+  dlg.showModal();
+}
+$('#rcptClose').onclick = () => $('#rcptDialog').close();
+$('#rcptDialog').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.close(); });
+
+// zig-zag paper edges (top always; bottom once the receipt is torn off)
+const zigzag = (n, torn) => {
+  const top = [], bot = [];
+  for (let i = 0; i <= n; i++) top.push(`${(i / n * 100).toFixed(2)}% ${i % 2 ? 6 : 0}px`);
+  if (torn) for (let i = n; i >= 0; i--) bot.push(`${(i / n * 100).toFixed(2)}% calc(100% - ${i % 2 ? 6 : 0}px)`);
+  else bot.push('100% 100%', '0% 100%');
+  return `polygon(${top.join(',')},${bot.join(',')})`;
+};
+/** Thermal-printer animation: the paper feeds up out of the slot in small steps, then tears off. */
+async function printReceipt(area, o, animate) {
+  const R = receiptLayout(o), W = Math.min(340, area.clientWidth - 24), H = Math.round(R.h * W / R.w);
+  const stage = area.querySelector('.paper-stage'), clip = area.querySelector('.paper-clip'), paper = area.querySelector('.paper');
+  paintReceipt(paper.querySelector('canvas'), R, W);
+  stage.style.height = H + 'px'; clip.style.width = W + 'px'; paper.style.clipPath = zigzag(34, false);
+  const status = area.querySelector('.print-status'), actions = area.querySelector('.receipt-actions');
+  const finish = () => {
+    clip.style.height = H + 'px'; paper.style.clipPath = zigzag(34, true);
+    area.classList.remove('printing'); area.classList.add('printed');
+    status.textContent = 'Receipt printed'; actions.hidden = false;
+  };
+  if (!animate || REDUCED) { finish(); return; }
+  area.classList.add('printing'); status.textContent = 'Printing your receipt…'; actions.hidden = true;
+  clip.style.height = '0px';
+  area.querySelector('.printer').scrollIntoView({ block: 'end', behavior: 'smooth' });
+  await new Promise(r => setTimeout(r, 700));                         // printer wakes up
+  for (let fed = 0; fed < H;) {
+    fed = Math.min(H, fed + 14 + Math.random() * 8);
+    clip.style.height = fed + 'px';
+    await new Promise(r => setTimeout(r, 42 + Math.random() * 38));   // stepper-motor feed
+  }
+  await new Promise(r => setTimeout(r, 380));
+  finish();
+  clip.animate([{ transform: 'translateY(0) rotate(0)' }, { transform: 'translateY(-10px) rotate(-1.2deg)' }, { transform: 'translateY(0) rotate(0)' }],
+    { duration: 520, easing: 'cubic-bezier(.22,.8,.24,1)' });                       // tear-off tug
+}
+
+/* ── confirmation ── */
+function openOrder(id) {
+  viewer.el = null;
+  const o = store.get(ORDERS_KEY, []).find(x => x.id === id), body = $('#okBody');
+  document.title = o ? `Order ${o.id} · ALKEMY 2027` : 'Order not found · ALKEMY 2027';
+  if (!o) { body.innerHTML = `<div class="ok-head"><h1 id="okTitle">Order not found</h1><p>This order isn't saved on this device.</p><a class="btn" href="#shop">Browse jerseys</a></div>`; return; }
+  const i = deptIndex(o.jersey.dept), d = DESIGNS[i];
+  let fresh = false; try { fresh = sessionStorage.getItem('alkemy27.print') === o.id; sessionStorage.removeItem('alkemy27.print'); } catch {}
+  body.innerHTML = `
+    <div class="ok-head"><div class="ok-badge" aria-hidden="true">✓</div><h1 id="okTitle" tabindex="-1">Payment successful</h1>
+      <p class="ok-id">Order number <b>${esc(o.id)}</b> · ${rupee(o.amount)}</p>
+      <div class="demo-banner" role="note">ℹ️ <span>Demo order — no payment was taken and no email was sent. In the live version a confirmation email goes to <b>${esc(o.customer.email)}</b>.</span></div></div>
+    <div class="ok-grid">
+      <div class="thumbs"><figure><canvas data-ok="front"></canvas><figcaption>Front</figcaption></figure><figure><canvas data-ok="back"></canvas><figcaption>Back</figcaption></figure></div>
+      <div class="printer-area" id="printerArea">
+        <div class="paper-stage"><div class="paper-clip"><div class="paper"><canvas aria-label="Payment receipt for order ${esc(o.id)}"></canvas></div></div></div>
+        <div class="printer" aria-hidden="true"><div class="pr-housing"></div><div class="pr-front"><span class="pr-tear"></span><span class="pr-label">ALKEMY 2027 · Receipt</span><span class="pr-btn"></span><span class="pr-led"></span></div></div>
+        <p class="print-status" aria-live="polite"></p>
+        <div class="receipt-actions" hidden><button type="button" class="btn primary" data-rc="view">View receipt</button><button type="button" class="btn" data-rc="pdf">Download PDF</button></div>
+      </div>
+    </div>
+    <div class="row-actions"><a class="btn" href="#jerseys">Back to home</a><a class="btn primary" href="#/jersey/${esc(o.jersey.dept)}">Order another jersey</a></div>`;
+  if (GL_OK && jerseys[i]) {                  // pictures of exactly what was ordered
+    if (printed === i) printed = -1;
+    jerseys[i].setPrint({ name: o.jersey.printName, num: o.jersey.number });
+    paintThumbs(body, snapPair(i), d.color);
+    jerseys[i].setPrint(defaultPrint(i));
+  } else paintThumbs(body, snapPair(i), d.color);
+  const area = $('#printerArea');
+  area.querySelector('[data-rc="view"]').onclick = () => viewReceipt(o);
+  area.querySelector('[data-rc="pdf"]').onclick = () => downloadReceipt(o);
+  $('#okTitle').focus({ preventScroll: true });
+  printReceipt(area, o, fresh);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   LAYOUT TARGETS (screen px) — hero arc, fit pin, shop card
+   ════════════════════════════════════════════════════════════════════ */
+function heroLayout() {
+  if (isPhone()) return { cx: VW / 2, cy: VH * .57, h: Math.min(VH * .46, VW * 1.08), spread: VW * .56, drop: VH * .03, depth: 200 };
+  return { cx: VW / 2, cy: VH / 2 + 40 * U, h: 610 * U, spread: 345 * U, drop: 44 * U, depth: 190 * U };
+}
+const wrapK = k => mod(k + N / 2, N) - N / 2;                 // relative slot in [-N/2, N/2)
+function arcSlot(k, L) {
+  const ak = Math.abs(k), sc = Math.max(0, 1 - .23 * ak) * smooth(2.5, 2.08, ak);
+  return { x: L.cx + L.spread * k * (1 - .1 * Math.min(ak, 2.5)), y: L.cy + L.drop * Math.pow(ak, 1.5), z: -L.depth * ak, h: L.h * sc, rotY: -k * .3 };
+}
+function fitLayout() {
+  if (isPhone()) return { x: VW / 2, y: VH * .34, z: 0, h: VH * .42 };
+  return { x: VW * .66, y: VH * .52, z: 0, h: VH * .74 };
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   MAIN LOOP
+   ════════════════════════════════════════════════════════════════════ */
+const fitEl = $('#fit'), shopEl = $('#shop'), kitEl = $('#kit'), fitOver = $('#fitOver');
+let last = performance.now(), introStart = 0, zone = '', activeSec = '';
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (view !== 'home') { viewerFrame(now, dt); requestAnimationFrame(frame); return; }   // product page / checkout
+  const sy = scrollY;
+  // carousel
+  if (!drag.on) state.carPos = lerp(state.carPos, state.carTarget, REDUCED ? 1 : 1 - Math.exp(-dt * 7));
+  const heroVisible = sy < VH * .5;
+  if (state.autoplay && heroVisible && !drag.on && assets && document.visibilityState === 'visible') {
+    state.apT += dt * 1000; if (state.apT >= AUTOPLAY_MS) go(1);
+  }
+  $('#apRing').style.strokeDashoffset = (75.4 * (1 - (state.autoplay ? state.apT / AUTOPLAY_MS : 0))).toFixed(1);
+
+  // scroll anchors
+  const fitTop = fitEl.offsetTop, pinEnd = fitTop + fitEl.offsetHeight - VH;
+  const liveSlot = cards[state.sel].querySelector('.slot'), sr = liveSlot.getBoundingClientRect();
+  const landScroll = Math.max(pinEnd + VH * .35, sr.top + sy + sr.height / 2 - VH * .5);
+  const a = clamp(sy / fitTop), p = clamp((sy - fitTop) / (pinEnd - fitTop)), b = clamp((sy - pinEnd) / (landScroll - pinEnd));
+  renderStep(sy < fitTop ? 0 : Math.min(STEPS.length - 1, Math.floor(p * STEPS.length * .999)));
+  flipTo(STEPS[state.step].angle, now); updateFlip(now);
+
+  // fixed section-2 front layer mimics sticky
+  const fy = sy < fitTop ? fitTop - sy : sy > pinEnd ? pinEnd - sy : 0;
+  fitOver.style.transform = `translate3d(0,${fy}px,0)`; fitOver.style.visibility = Math.abs(fy) < VH ? 'visible' : 'hidden';
+
+  // nav zone + active link
+  const z = sy + 70 < shopEl.offsetTop ? 'branch' : sy + 70 < kitEl.offsetTop ? 'light' : 'dark';
+  if (z !== zone) { zone = z; document.body.dataset.zone = z; }
+  const sec = sy + VH * .4 < fitTop ? 'jerseys' : sy + VH * .4 < shopEl.offsetTop ? 'fit' : sy + VH * .4 < kitEl.offsetTop ? 'shop' : 'kit';
+  if (sec !== activeSec) { activeSec = sec; $$('[data-sec]').forEach(l => l.classList.toggle('on', l.dataset.sec === sec)); }
+
+  // card tilt (springy) — also drives the landed jersey
+  cards.forEach((c, i) => {
+    const t = cardTilt[i]; t.rx = lerp(t.rx, t.trx, 1 - Math.exp(-dt * 10)); t.ry = lerp(t.ry, t.try, 1 - Math.exp(-dt * 10));
+    if (Math.abs(t.rx) + Math.abs(t.ry) > .01 || c.style.transform) c.style.transform = Math.abs(t.rx) + Math.abs(t.ry) > .01 ? `perspective(900px) rotateX(${t.rx.toFixed(2)}deg) rotateY(${t.ry.toFixed(2)}deg)` : '';
+  });
+
+  if (GL_OK && jerseys.length) {
+    const L = heroLayout(), F = fitLayout(), t = now / 1000;
+    const introE = introStart ? clamp((now - introStart) / (REDUCED ? 1 : 1300)) : 0;
+    jerseys.forEach((j, i) => {
+      const k = wrapK(i - state.carPos), s = arcSlot(k, L);
+      const rise = REDUCED ? (introE > 0 ? 0 : VH) : (1 - easeOut3(clamp(introE * 1.35 - Math.abs(k) * .12))) * VH * .8;
+      const bob = REDUCED ? 0 : Math.sin(t * 1.3 + i * 1.7) * .012 * s.h, sway = REDUCED ? 0 : Math.sin(t * .9 + i) * .025;
+      let x = s.x, y = s.y - sy + rise + bob, zz = s.z, h = s.h, ry = s.rotY + sway, rx = 0, rz = REDUCED ? 0 : Math.sin(t * .7 + i * 2) * .015;
+      if (i === state.sel) {
+        const S = { x: sr.left + sr.width / 2, y: sr.top + sr.height / 2, z: 0, h: sr.height };
+        if (sy <= fitTop) {
+          const e = easeIO(a), fb = Math.sin(t * 1.3 + i * 1.7) * .012 * F.h;
+          x = lerp(x, F.x, e); y = lerp(y, F.y + fb, e); zz = lerp(zz, 0, e); h = lerp(h, F.h, e); ry = lerp(ry, flip.angle, e); rz *= 1 - e;
+        } else if (sy <= pinEnd) {
+          x = F.x; y = F.y + bob / s.h * F.h; zz = 0; h = F.h; ry = flip.angle; rz *= .5;
+        } else {
+          const e = easeIO(b), fl = (1 - e) * (REDUCED ? 0 : Math.sin(t * 1.3 + i * 1.7) * .012 * F.h);
+          x = lerp(F.x, S.x, e); y = lerp(F.y, S.y, e) + fl; zz = 0; h = lerp(F.h, S.h, e);
+          ry = lerp(flip.angle, STEPS[STEPS.length - 1].angle + (REDUCED ? 0 : Math.PI * 4), e);
+          rz = rz * (1 - e) + (REDUCED ? 0 : Math.sin(e * Math.PI) * .25);
+          if (b > .03) fireStorm(VW / 2 + (x - VW / 2), y, now);
+          if (e > .999) { const tl = cardTilt[i]; rx = tl.rx * Math.PI / 180; ry = (STEPS[STEPS.length - 1].angle + (REDUCED ? 0 : Math.PI * 4)) + tl.ry * Math.PI / 180; rz = 0; }
+          // phone strip: hide when the live card is scrolled out of the strip
+          if (isPhone() && b > .9) { const gr = grid.getBoundingClientRect(); if (S.x < gr.left || S.x > gr.right) h = 0; }
+        }
+      } else if (y + s.h < -40 || !introStart) h = 0;
+      j.place(x, y, zz, h, ry, rx, rz);
+    });
+    updateStorm(now);
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   BOOT
+   ════════════════════════════════════════════════════════════════════ */
+async function boot() {
+  const status = $('#introStatus'), bar = $('#introBar');
+  select(0, { instant: true });
+  const debug = new URLSearchParams(location.search).get('debug') === 'cut';
+  let done = 0, total = 2;
+  const tick = () => { bar.style.width = `${Math.min(100, (++done / total) * 100)}%`; };
+  try {
+    try { await document.fonts.load('100px Anton'); await document.fonts.load('500 20px "DM Mono"'); } catch {}
+    let shape = null;
+    if (GL_OK) {
+      status.textContent = 'Loading 3D jersey…';
+      shape = await loadJerseyModel().catch(e => { console.warn(`[RallyKit] ${GLB.url} unavailable - falling back to flat photo cards.`, e); return null; });
+      tick();
+    }
+    const shadowGeo = GL_OK ? new THREE.PlaneGeometry(JERSEY_ASPECT * 1.12, 1.12) : null;
+    if (shape?.kind === 'art') {
+      // artwork mode: no photos needed — sprites are rendered from the 3D jerseys themselves
+      status.textContent = 'Painting branch jerseys…';
+      jerseys = DESIGNS.map((d, i) => new Jersey(d, i, null, null, shape, shadowGeo));
+      const fronts = jerseys.map(j => ({ sprite: snapshotSprite(j.spin) })), backs = jerseys.map(j => ({ sprite: snapshotSprite(j.spin, Math.PI) }));
+      jerseys.forEach((j, i) => j.setShadow(fronts[i].sprite));
+      assets = { fronts, backs }; tick();
+    } else {
+      // photo mode / fallback: alpha-cut the photos
+      status.textContent = 'Cutting jerseys…'; total += N;
+      const fronts = await Promise.all(DESIGNS.map(d => loadAndCutJersey(d.front).then(r => (tick(), r))));
+      const backs = await buildBacks(fronts); tick();
+      assets = { fronts, backs };
+      if (GL_OK) jerseys = DESIGNS.map((d, i) => new Jersey(d, i, fronts[i], backs[i], shape || flatCards(), shadowGeo));
+    }
+    document.body.dataset.jersey = GL_OK ? (shape?.kind || 'flat') : 'none';
+    if (debug) return showDebug();
+    const { fronts } = assets;
+    cards.forEach((c, i) => drawSprite(c.querySelector('.slot canvas'), fronts[i].sprite));
+    $$('.pal').forEach((p, i) => drawSprite(p.querySelector('canvas'), fronts[i].sprite));
+    renderKit();
+    if (GL_OK) renderer.compile(scene, camera);
+    else drawSprite(Object.assign($('#heroFallback'), { width: fronts[0].sprite.width / 2, height: fronts[0].sprite.height / 2 }), fronts[state.sel].sprite);
+    route(); addEventListener('hashchange', route);          // product page / checkout / order deep links
+    await new Promise(r => setTimeout(r, REDUCED ? 0 : 450));
+    $('#intro').classList.add('done');
+    setTimeout(() => { introStart = performance.now(); }, REDUCED ? 0 : 250);
+    setTimeout(() => $('#intro').remove(), 1400);
+  } catch (err) {
+    console.error(err);
+    status.classList.add('err');
+    status.textContent = location.protocol === 'file:'
+      ? 'Open this page through a local web server (e.g. "python -m http.server" or "npx serve") — browsers block loading the 3D model and reading photo pixels from local files.'
+      : `Couldn't prepare the jerseys: ${err.message}`;
+  }
+}
+function showDebug() {
+  document.body.classList.add('debug-cut');
+  const wrap = document.createElement('div'); wrap.id = 'debug'; document.body.appendChild(wrap);
+  DESIGNS.forEach((d, i) => ['fronts', 'backs'].forEach(kind => {
+    ['m', ''].forEach(cls => {
+      const f = document.createElement('figure'); f.className = cls; const c = assets[kind][i].sprite;
+      const cc = makeCanvas(c.width, c.height); cc.getContext('2d').drawImage(c, 0, 0); f.appendChild(cc);
+      f.insertAdjacentHTML('beforeend', `<figcaption>${d.branch} ${kind.slice(0, -1)} · ${document.body.dataset.jersey}</figcaption>`); wrap.appendChild(f);
+    });
+  }));
+}
+requestAnimationFrame(frame);
+boot();
+</script>
+</body>
+</html>
